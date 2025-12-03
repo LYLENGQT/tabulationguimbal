@@ -78,7 +78,7 @@ export function RankingsPage() {
   }
 
   const backHref = isAdmin ? '/admin' : '/judge';
-  const backLabel = isAdmin ? 'Back to dashboard' : 'Back to scoring';
+  const backLabel = isAdmin ? 'Back to Dashboard' : 'Back to Scoring';
 
   return (
     <AppShell
@@ -114,7 +114,7 @@ export function RankingsPage() {
                       <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
                         <th className="py-2">Place</th>
                         <th className="py-2">Contestant</th>
-                        <th className="py-2 text-center">Total points</th>
+                        <th className="py-2 text-center">Total Points</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
@@ -190,7 +190,7 @@ export function RankingsPage() {
                       <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
                         <th className="py-2">Rank</th>
                         <th className="py-2">Contestant</th>
-                        <th className="py-2 text-center">Category score</th>
+                        <th className="py-2 text-center">Category Score</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">

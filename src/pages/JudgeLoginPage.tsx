@@ -55,7 +55,7 @@ export function JudgeLoginPage() {
           <CardContent>
             <form onSubmit={onSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
+                <Label htmlFor="email">Email Address</Label>
                 <Input
                   id="email"
                   type="email"
@@ -83,7 +83,7 @@ export function JudgeLoginPage() {
                 className="h-12 w-full rounded-2xl text-base"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Signing in…' : 'Enter panel'}
+                {isSubmitting ? 'Signing in…' : 'Enter Panel'}
               </Button>
               {message && (
                 <p className="rounded-2xl bg-rose-500/10 px-4 py-2 text-center text-sm text-rose-200">

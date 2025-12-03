@@ -154,7 +154,7 @@ export function JudgeScoringPage() {
       showAdminLink={false}
       actions={
         <Button variant="outline" onClick={handleSignOut}>
-          Sign out
+          Sign Out
         </Button>
       }
     >
@@ -168,9 +168,9 @@ export function JudgeScoringPage() {
         <div className="space-y-8">
           <div className="grid gap-6 lg:grid-cols-2">
             <Card className="p-6">
-              <p className="text-xs uppercase tracking-[0.4em] text-slate-500">Current judge</p>
+              <p className="text-xs uppercase tracking-[0.4em] text-slate-500">Current Judge</p>
               <h2 className="mt-2 text-3xl font-semibold text-white">{judge.full_name}</h2>
-              <p className="text-sm text-slate-400">{judge.division} division</p>
+              <p className="text-sm text-slate-400 capitalize">{judge.division} Division</p>
               <div className="mt-6 grid grid-cols-3 gap-4 text-center text-sm">
                 <div>
                   <p className="text-2xl font-semibold text-white">{contestants.length}</p>
@@ -182,7 +182,7 @@ export function JudgeScoringPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold text-white">{totalLocked}</p>
-                  <p className="text-slate-400">Locked rows</p>
+                  <p className="text-slate-400">Locked Rows</p>
                 </div>
               </div>
             </Card>

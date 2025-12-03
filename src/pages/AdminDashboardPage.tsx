@@ -201,8 +201,8 @@ export function AdminDashboardPage() {
 
   const summary = [
     { label: 'Schools', value: schoolCount },
-    { label: 'Male contestants', value: maleCount },
-    { label: 'Female contestants', value: femaleCount },
+    { label: 'Male Contestants', value: maleCount },
+    { label: 'Female Contestants', value: femaleCount },
     { label: 'Judges', value: totalJudges }
   ];
 
@@ -238,7 +238,7 @@ export function AdminDashboardPage() {
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card className="p-5">
                   <CardHeader>
-                    <CardTitle>Register school</CardTitle>
+                    <CardTitle>Register School</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <form
@@ -248,11 +248,11 @@ export function AdminDashboardPage() {
                       )}
                     >
                       <div className="space-y-2">
-                        <Label>School / Contingent name</Label>
+                        <Label>School / Contingent Name</Label>
                         <Input {...contestantForm.register('full_name')} />
                       </div>
                       <div className="space-y-2">
-                        <Label>Assigned number</Label>
+                        <Label>Assigned Number</Label>
                         <Input type="number" {...contestantForm.register('number', { valueAsNumber: true })} />
                         {contestantForm.formState.errors.number && (
                           <p className="text-xs text-rose-300">
@@ -266,10 +266,10 @@ export function AdminDashboardPage() {
                         disabled={contestantMutation.isPending || atCapacity}
                       >
                         {atCapacity
-                          ? 'Capacity reached'
+                          ? 'Capacity Reached'
                           : contestantMutation.isPending
                           ? 'Saving…'
-                          : 'Add pair'}
+                          : 'Add Pair'}
                       </Button>
                       {atCapacity && (
                         <p className="text-xs text-slate-400">
@@ -282,7 +282,7 @@ export function AdminDashboardPage() {
 
                 <Card className="p-5">
                   <CardHeader>
-                    <CardTitle>Schools on record</CardTitle>
+                    <CardTitle>Schools on Record</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ScrollArea className="h-64">
@@ -321,7 +321,7 @@ export function AdminDashboardPage() {
             <TabsContent value="judges" className="space-y-6">
               <Card className="p-5">
                 <CardHeader>
-                  <CardTitle>Invite judge</CardTitle>
+                  <CardTitle>Invite Judge</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <form
@@ -329,7 +329,7 @@ export function AdminDashboardPage() {
                     onSubmit={judgeForm.handleSubmit((values) => judgeMutation.mutate(values))}
                   >
                     <div className="space-y-2 md:col-span-2">
-                      <Label>Full name</Label>
+                      <Label>Full Name</Label>
                       <Input {...judgeForm.register('full_name')} />
                     </div>
                     <div className="space-y-2">
@@ -337,7 +337,7 @@ export function AdminDashboardPage() {
                       <Input type="email" {...judgeForm.register('email')} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Initial password</Label>
+                      <Label>Initial Password</Label>
                       <Input type="password" {...judgeForm.register('password')} />
                       {judgeForm.formState.errors.password && (
                         <p className="text-xs text-rose-300">
@@ -366,7 +366,7 @@ export function AdminDashboardPage() {
                         className="w-full rounded-2xl"
                         disabled={judgeMutation.isPending}
                       >
-                        {judgeMutation.isPending ? 'Inviting…' : 'Invite judge'}
+                        {judgeMutation.isPending ? 'Inviting…' : 'Invite Judge'}
                       </Button>
                     </div>
                   </form>
@@ -375,7 +375,7 @@ export function AdminDashboardPage() {
 
               <Card className="p-5">
                 <CardHeader>
-                  <CardTitle>Judges roster</CardTitle>
+                  <CardTitle>Judges Roster</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="max-h-80">
