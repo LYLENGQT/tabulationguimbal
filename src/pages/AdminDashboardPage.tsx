@@ -5,23 +5,36 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../components/ui/select';
 import {
   createContestant,
   createJudge,
+  deleteJudge,
   fetchAllContestants,
   fetchJudges,
   fetchLeaderboard,
   fetchScoresForExport,
   refreshLeaderboard,
   supabaseAuth,
-  updateJudge,
-  deleteJudge
+  updateJudge
 } from '../services/supabaseApi';
 import type { Division } from '../types/scoring';
 import { downloadCsv, toCsv } from '../utils/export';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { ScrollArea } from '../components/ui/scroll-area';
+import { Badge } from '../components/ui/badge';
 
 const contestantSchema = z.object({
-  full_name: z.string().min(2),
+  full_name: z.string().min(2, 'School name is required'),
   number: z.number().int().min(1)
 });
 
@@ -35,7 +48,10 @@ const judgeSchema = z.object({
 export function AdminDashboardPage() {
   const queryClient = useQueryClient();
   const [divisionFilter, setDivisionFilter] = useState<Division>('male');
+  const [activeTab, setActiveTab] = useState('contestants');
   const [editingJudgeId, setEditingJudgeId] = useState<string | null>(null);
+  const [roleChecked, setRoleChecked] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const contestantsQuery = useQuery({
     queryKey: ['contestants-all'],
@@ -54,43 +70,37 @@ export function AdminDashboardPage() {
 
   const contestantForm = useForm<z.infer<typeof contestantSchema>>({
     resolver: zodResolver(contestantSchema),
-    defaultValues: {
-      full_name: '',
-      number: 1
-    }
+    defaultValues: { full_name: '', number: 1 }
   });
 
   const judgeForm = useForm<z.infer<typeof judgeSchema>>({
     resolver: zodResolver(judgeSchema),
-    defaultValues: {
-      full_name: '',
-      email: '',
-      password: '',
-      division: 'male'
-    }
+    defaultValues: { full_name: '', email: '', password: '', division: 'male' }
   });
 
-  // Count contestants per division to enforce a max of 5 per gender.
   const allContestants = contestantsQuery.data ?? [];
   const maleCount = allContestants.filter((c) => c.division === 'male').length;
   const femaleCount = allContestants.filter((c) => c.division === 'female').length;
-  const maxPerDivision = 5;
-  const maleFull = maleCount >= maxPerDivision;
-  const femaleFull = femaleCount >= maxPerDivision;
-  const allFull = maleFull && femaleFull;
+  const schoolCount = Math.ceil(allContestants.length / 2);
+  const totalJudges = judgesQuery.data?.length ?? 0;
+  const atCapacity = maleCount >= 5 && femaleCount >= 5;
 
-  // Automatically suggest the next available contestant number (shared across divisions).
   useEffect(() => {
-    const numbersInDivision = allContestants
-      .map((c) => c.number);
-    const nextNumber =
-      numbersInDivision.length > 0 ? Math.max(...numbersInDivision) + 1 : 1;
+    const numbers = allContestants.map((c) => c.number);
+    const nextNumber = numbers.length ? Math.max(...numbers) + 1 : 1;
     contestantForm.setValue('number', nextNumber);
   }, [allContestants, contestantForm]);
 
   const contestantMutation = useMutation({
-    // Create one male and one female contestant for the given school/number.
     mutationFn: async (values: z.infer<typeof contestantSchema>) => {
+      const exists = allContestants.find((c) => c.number === values.number);
+      if (exists) {
+        contestantForm.setError('number', {
+          type: 'manual',
+          message: 'This number is already assigned'
+        });
+        throw new Error('duplicate');
+      }
       await createContestant({
         full_name: values.full_name,
         number: values.number,
@@ -110,14 +120,12 @@ export function AdminDashboardPage() {
 
   const judgeMutation = useMutation({
     mutationFn: async (values: z.infer<typeof judgeSchema>) => {
-      // 1) Create Supabase auth user (credentials)
       await supabaseAuth.signUpWithPassword({
         email: values.email,
         password: values.password,
         full_name: values.full_name,
         division: values.division
       });
-      // 2) Store judge profile in judges table
       await createJudge({
         full_name: values.full_name,
         email: values.email,
@@ -131,8 +139,11 @@ export function AdminDashboardPage() {
   });
 
   const updateJudgeMutation = useMutation({
-    mutationFn: async (values: z.infer<typeof judgeSchema> & { id: string }) => {
-      await updateJudge(values.id, {
+    mutationFn: async ({
+      id,
+      ...values
+    }: z.infer<typeof judgeSchema> & { id: string }) => {
+      await updateJudge(id, {
         full_name: values.full_name,
         email: values.email,
         division: values.division
@@ -145,58 +156,37 @@ export function AdminDashboardPage() {
   });
 
   const deleteJudgeMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await deleteJudge(id);
-    },
-    onSuccess: () => {
-      if (editingJudgeId) setEditingJudgeId(null);
-      queryClient.invalidateQueries({ queryKey: ['judges'] });
-    }
+    mutationFn: async (id: string) => deleteJudge(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['judges'] })
   });
 
   const refreshMutation = useMutation({
     mutationFn: refreshLeaderboard,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
-    }
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
   });
 
   const handleExport = async () => {
     const rows = await fetchScoresForExport();
-    const csv = toCsv(rows);
-    downloadCsv('scores.csv', csv);
+    downloadCsv('scores.csv', toCsv(rows));
   };
 
-  // Simple RBAC: only users marked as admin in our auth helper can view this page.
-  const [roleChecked, setRoleChecked] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
     (async () => {
-      try {
-        const role = await supabaseAuth.getCurrentRole();
-        if (!isMounted) return;
-        setIsAdmin(role === 'admin');
-      } catch (error) {
-        console.error('Failed to determine auth role', error);
-        if (!isMounted) return;
-        setIsAdmin(false);
-      } finally {
-        if (isMounted) {
-          setRoleChecked(true);
-        }
-      }
+      const role = await supabaseAuth.getCurrentRole();
+      if (!mounted) return;
+      setIsAdmin(role === 'admin');
+      setRoleChecked(true);
     })();
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, []);
 
   if (!roleChecked) {
     return (
       <AppShell title="Admin Dashboard" showAdminLink={false}>
-        <p className="text-sm text-slate-400">Checking access…</p>
+        <p className="text-sm text-slate-400">Verifying access…</p>
       </AppShell>
     );
   }
@@ -204,12 +194,17 @@ export function AdminDashboardPage() {
   if (!isAdmin) {
     return (
       <AppShell title="Admin Dashboard" showAdminLink={false}>
-        <p className="text-sm text-red-300">
-          You are not authorized to view this page.
-        </p>
+        <p className="text-sm text-rose-300">You are not authorized to view this page.</p>
       </AppShell>
     );
   }
+
+  const summary = [
+    { label: 'Schools', value: schoolCount },
+    { label: 'Male contestants', value: maleCount },
+    { label: 'Female contestants', value: femaleCount },
+    { label: 'Judges', value: totalJudges }
+  ];
 
   return (
     <AppShell
@@ -221,263 +216,379 @@ export function AdminDashboardPage() {
         </Button>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-[1fr,1fr]">
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-lg font-semibold">Add School (1 Male & 1 Female)</h2>
-          {allFull ? (
-            <p className="mt-4 text-sm text-slate-400">
-              You already have {maxPerDivision} male and {maxPerDivision} female contestants.
-            </p>
-          ) : (
-            <form
-              className="mt-4 space-y-4"
-              onSubmit={contestantForm.handleSubmit((values) => {
-                if (maleFull || femaleFull) {
-                  return;
-                }
-                const existing = (contestantsQuery.data ?? []).find(
-                  (c) =>
-                    c.number === values.number
-                );
-                if (existing) {
-                  contestantForm.setError('number', {
-                    type: 'manual',
-                    message: 'This number is already used'
-                  });
-                  return;
-                }
-                contestantMutation.mutate(values);
-              })}
-            >
-              <div>
-                <label className="text-sm text-slate-300">School</label>
-                <input
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
-                  {...contestantForm.register('full_name')}
-                />
-              </div>
-              <div>
-                <label className="text-sm text-slate-300">Number</label>
-                <input
-                  type="number"
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
-                  {...contestantForm.register('number', { valueAsNumber: true })}
-                />
-                {contestantForm.formState.errors.number && (
-                  <p className="mt-1 text-xs text-red-400">
-                    {contestantForm.formState.errors.number.message}
-                  </p>
-                )}
-              </div>
-              <Button type="submit" disabled={contestantMutation.isPending}>
-                {contestantMutation.isPending ? 'Saving…' : 'Save Contestant'}
-              </Button>
-            </form>
-          )}
-        </section>
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-lg font-semibold">Add Judge</h2>
-          <form
-            className="mt-4 space-y-4"
-            onSubmit={judgeForm.handleSubmit((values) => judgeMutation.mutate(values))}
-          >
-            <div>
-              <label className="text-sm text-slate-300">Full Name</label>
-              <input
-                className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
-                {...judgeForm.register('full_name')}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-slate-300">Email</label>
-              <input
-                type="email"
-                className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
-                {...judgeForm.register('email')}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-slate-300">Initial password</label>
-              <input
-                type="password"
-                className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
-                {...judgeForm.register('password')}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-slate-300">Division</label>
-              <select
-                className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
-                {...judgeForm.register('division')}
-              >
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
-            </div>
-            <Button type="submit" disabled={judgeMutation.isPending}>
-              {judgeMutation.isPending ? 'Saving…' : 'Save Judge'}
-            </Button>
-          </form>
-        </section>
-      </div>
-
-      <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Leaderboard</h2>
-          <div className="flex items-center gap-3">
-            <select
-              className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
-              value={divisionFilter}
-              onChange={(e) => setDivisionFilter(e.target.value as Division)}
-            >
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
-            <Button onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
-              {refreshMutation.isPending ? 'Refreshing…' : 'Refresh totals'}
-            </Button>
-          </div>
+      <div className="space-y-8">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {summary.map((item) => (
+            <Card key={item.label} className="p-5 text-center">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">{item.label}</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{item.value}</p>
+            </Card>
+          ))}
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-800 text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
-                <th className="py-2">Rank</th>
-                <th className="py-2">Contestant</th>
-                <th className="py-2">Total Score</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {leaderboardQuery.data?.map((row) => (
-                <tr key={row.contestant_id}>
-                  <td className="py-3">{row.rank}</td>
-                  <td className="py-3">
-                    #{row.number?.toString().padStart(2, '0')} {row.full_name}
-                  </td>
-                  <td className="py-3">{row.total_score?.toFixed(3)}</td>
-                </tr>
-              )) ?? (
-                <tr>
-                  <td className="py-3" colSpan={3}>
-                    No data yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
-      <section className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-lg font-semibold">Judges</h2>
-          <ul className="mt-4 space-y-2 text-sm">
-            {judgesQuery.data?.map((judge) => {
-              const isEditing = editingJudgeId === judge.id;
-              return (
-                <li
-                  key={judge.id}
-                  className="flex flex-col gap-2 rounded-md border border-slate-800 px-3 py-2"
-                >
-                  {isEditing ? (
+        <Card className="p-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="contestants">Contestants</TabsTrigger>
+              <TabsTrigger value="judges">Judges</TabsTrigger>
+              <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="contestants" className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="p-5">
+                  <CardHeader>
+                    <CardTitle>Register school</CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <form
-                      className="space-y-2"
-                      onSubmit={judgeForm.handleSubmit((values) =>
-                        updateJudgeMutation.mutate({ ...values, id: judge.id })
+                      className="space-y-4"
+                      onSubmit={contestantForm.handleSubmit((values) =>
+                        contestantMutation.mutate(values)
                       )}
                     >
-                      <input
-                        className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
-                        defaultValue={judge.full_name}
-                        {...judgeForm.register('full_name')}
-                      />
-                      <input
-                        type="email"
-                        className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
-                        defaultValue={judge.email}
-                        {...judgeForm.register('email')}
-                      />
-                      <select
-                        className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
-                        defaultValue={judge.division}
-                        {...judgeForm.register('division')}
+                      <div className="space-y-2">
+                        <Label>School / Contingent name</Label>
+                        <Input {...contestantForm.register('full_name')} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Assigned number</Label>
+                        <Input type="number" {...contestantForm.register('number', { valueAsNumber: true })} />
+                        {contestantForm.formState.errors.number && (
+                          <p className="text-xs text-rose-300">
+                            {contestantForm.formState.errors.number.message}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full rounded-2xl"
+                        disabled={contestantMutation.isPending || atCapacity}
                       >
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                      </select>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="submit"
-                          size="sm"
-                          disabled={updateJudgeMutation.isPending}
-                        >
-                          {updateJudgeMutation.isPending ? 'Saving…' : 'Save'}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingJudgeId(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
+                        {atCapacity
+                          ? 'Capacity reached'
+                          : contestantMutation.isPending
+                          ? 'Saving…'
+                          : 'Add pair'}
+                      </Button>
+                      {atCapacity && (
+                        <p className="text-xs text-slate-400">
+                          Maximum of five per division reached. Remove a contestant first.
+                        </p>
+                      )}
                     </form>
-                  ) : (
-                    <>
-                      <p className="font-medium">{judge.full_name}</p>
-                      <p className="text-xs uppercase text-slate-500">
-                        {judge.division}
-                      </p>
-                      <p className="text-xs text-slate-400">{judge.email}</p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setEditingJudgeId(judge.id);
-                            judgeForm.reset({
-                              full_name: judge.full_name,
-                              email: judge.email,
-                              password: '',
-                              division: judge.division as Division
-                            });
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteJudgeMutation.mutate(judge.id)}
-                          disabled={deleteJudgeMutation.isPending}
-                        >
-                          Delete
-                        </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="p-5">
+                  <CardHeader>
+                    <CardTitle>Schools on record</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="max-h-64">
+                      <div className="space-y-3">
+                        {schoolCount === 0 && (
+                          <p className="text-sm text-slate-400">No schools registered yet.</p>
+                        )}
+                        {Array.from(
+                          new Map(
+                            allContestants.map((contestant) => [
+                              contestant.number,
+                              contestant.full_name
+                            ])
+                          ).entries()
+                        ).map(([number, name]) => (
+                          <div
+                            key={number}
+                            className="flex items-center justify-between rounded-2xl border border-white/5 px-3 py-2"
+                          >
+                            <div>
+                              <p className="font-medium text-white">
+                                #{String(number).padStart(2, '0')}
+                              </p>
+                              <p className="text-sm text-slate-400">{name}</p>
+                            </div>
+                            <Badge>Registered</Badge>
+                          </div>
+                        ))}
                       </div>
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-lg font-semibold">Contestants</h2>
-          <ul className="mt-4 space-y-2 text-sm max-h-64 overflow-y-auto pr-2">
-            {contestantsQuery.data?.map((contestant) => (
-              <li key={contestant.id} className="rounded-md border border-slate-800 px-3 py-2">
-                <p className="font-medium">
-                  #{contestant.number.toString().padStart(2, '0')} {contestant.full_name}
-                </p>
-                <p className="text-xs uppercase text-slate-500">{contestant.division}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="judges" className="space-y-6">
+              <Card className="p-5">
+                <CardHeader>
+                  <CardTitle>Invite judge</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    className="grid gap-4 md:grid-cols-2"
+                    onSubmit={judgeForm.handleSubmit((values) => judgeMutation.mutate(values))}
+                  >
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Full name</Label>
+                      <Input {...judgeForm.register('full_name')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input type="email" {...judgeForm.register('email')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Initial password</Label>
+                      <Input type="password" {...judgeForm.register('password')} />
+                      {judgeForm.formState.errors.password && (
+                        <p className="text-xs text-rose-300">
+                          {judgeForm.formState.errors.password.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Division</Label>
+                      <Select
+                        value={judgeForm.watch('division')}
+                        onValueChange={(value) => judgeForm.setValue('division', value as Division)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select division" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Button
+                        type="submit"
+                        className="w-full rounded-2xl"
+                        disabled={judgeMutation.isPending}
+                      >
+                        {judgeMutation.isPending ? 'Inviting…' : 'Invite judge'}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+
+              <Card className="p-5">
+                <CardHeader>
+                  <CardTitle>Judges roster</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="max-h-80">
+                    <table className="min-w-full divide-y divide-white/5 text-sm">
+                      <thead>
+                        <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                          <th className="py-2">Name</th>
+                          <th className="py-2">Email</th>
+                          <th className="py-2">Division</th>
+                          <th className="py-2 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {judgesQuery.data?.map((judgeRow) => {
+                          const isEditing = editingJudgeId === judgeRow.id;
+                          const currentValues =
+                            isEditing && editingValues
+                              ? editingValues
+                              : {
+                                  full_name: judgeRow.full_name,
+                                  email: judgeRow.email,
+                                  division: judgeRow.division as Division
+                                };
+                          return (
+                            <tr key={judgeRow.id}>
+                              <td className="py-3 text-white">
+                                {isEditing ? (
+                                  <Input
+                                    value={currentValues.full_name}
+                                    onChange={(e) =>
+                                      setEditingValues((prev) =>
+                                        prev
+                                          ? { ...prev, full_name: e.target.value }
+                                          : {
+                                              full_name: e.target.value,
+                                              email: judgeRow.email,
+                                              division: judgeRow.division as Division
+                                            }
+                                      )
+                                    }
+                                  />
+                                ) : (
+                                  judgeRow.full_name
+                                )}
+                              </td>
+                              <td className="py-3 text-slate-400">
+                                {isEditing ? (
+                                  <Input
+                                    value={currentValues.email}
+                                    onChange={(e) =>
+                                      setEditingValues((prev) =>
+                                        prev
+                                          ? { ...prev, email: e.target.value }
+                                          : {
+                                              full_name: judgeRow.full_name,
+                                              email: e.target.value,
+                                              division: judgeRow.division as Division
+                                            }
+                                      )
+                                    }
+                                  />
+                                ) : (
+                                  judgeRow.email
+                                )}
+                              </td>
+                              <td className="py-3 capitalize">
+                                {isEditing ? (
+                                  <Select
+                                    value={currentValues.division}
+                                    onValueChange={(value) =>
+                                      setEditingValues((prev) =>
+                                        prev
+                                          ? { ...prev, division: value as Division }
+                                          : {
+                                              full_name: judgeRow.full_name,
+                                              email: judgeRow.email,
+                                              division: value as Division
+                                            }
+                                      )
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="male">Male</SelectItem>
+                                      <SelectItem value="female">Female</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  judgeRow.division
+                                )}
+                              </td>
+                              <td className="py-3 text-right space-x-2">
+                                {isEditing ? (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (!editingValues) return;
+                                        updateJudgeMutation.mutate({
+                                          id: judgeRow.id,
+                                          ...editingValues
+                                        });
+                                      }}
+                                    >
+                                      Save
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingJudgeId(null);
+                                        setEditingValues(null);
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingJudgeId(judgeRow.id);
+                                      setEditingValues({
+                                        full_name: judgeRow.full_name,
+                                        email: judgeRow.email,
+                                        division: judgeRow.division as Division
+                                      });
+                                    }}
+                                  >
+                                    Edit
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteJudgeMutation.mutate(judgeRow.id)}
+                                >
+                                  Remove
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {judgesQuery.data?.length === 0 && (
+                      <p className="mt-4 text-sm text-slate-400">No judges registered.</p>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="leaderboard" className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <Select
+                  value={divisionFilter}
+                  onValueChange={(value) => setDivisionFilter(value as Division)}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => refreshMutation.mutate()}
+                  disabled={refreshMutation.isPending}
+                >
+                  {refreshMutation.isPending ? 'Refreshing…' : 'Refresh totals'}
+                </Button>
+              </div>
+              <Card className="p-5">
+                <ScrollArea className="max-h-[420px]">
+                  <table className="min-w-full divide-y divide-white/5 text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                        <th className="py-2">Rank</th>
+                        <th className="py-2">Contestant</th>
+                        <th className="py-2">Total score</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {leaderboardQuery.data?.map((row) => (
+                        <tr key={row.contestant_id}>
+                          <td className="py-3 text-white">{row.rank}</td>
+                          <td className="py-3">
+                            #{row.number?.toString().padStart(2, '0')} {row.full_name}
+                          </td>
+                          <td className="py-3">{row.total_score?.toFixed(3)}</td>
+                        </tr>
+                      )) ?? (
+                        <tr>
+                          <td className="py-3 text-sm text-slate-400" colSpan={3}>
+                            No records found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollArea>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </Card>
+      </div>
     </AppShell>
   );
 }
-
 

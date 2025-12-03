@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { ScrollArea } from '../components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Badge } from '../components/ui/badge';
 import {
   fetchCategories,
   fetchContestants,
@@ -27,7 +32,6 @@ export function JudgeScoringPage() {
   const setContestants = useScoringStore((state) => state.setContestants);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  // scores[contestantId][criterionId] = string value from input
   const [sheetValues, setSheetValues] = useState<
     Record<string, Record<string, string>>
   >({});
@@ -117,9 +121,14 @@ export function JudgeScoringPage() {
         ) ?? []
       : []);
 
+  useEffect(() => {
+    if (!selectedCategoryId && categories.length) {
+      setSelectedCategoryId(categories[0].id);
+    }
+  }, [categories, selectedCategoryId]);
+
   const ready = !judgeQuery.isLoading && Boolean(judge);
 
-  // When we load scores from Supabase for this judge + category, seed the local sheet values
   useEffect(() => {
     if (!scoresSheetQuery.data) return;
     const next: Record<string, Record<string, string>> = {};
@@ -137,6 +146,8 @@ export function JudgeScoringPage() {
     navigate('/login');
   };
 
+  const totalLocked = useMemo(() => locksQuery.data?.length ?? 0, [locksQuery.data]);
+
   return (
     <AppShell
       title="Judge Scoring Panel"
@@ -150,88 +161,96 @@ export function JudgeScoringPage() {
       {judgeQuery.isLoading ? (
         <p className="text-sm text-slate-400">Loading judge profile…</p>
       ) : !judge ? (
-        <p className="text-sm text-red-300">
-          No judge profile was found for this account. Please ask the tabulation admin
-          to add you to the judges list with the same email you used to log in.
+        <p className="text-sm text-rose-300">
+          No judge profile was found for this account. Please contact the administrative team.
         </p>
       ) : (
-        <div className="space-y-6">
-          <section className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm text-slate-400">Welcome,</p>
-              <p className="text-xl font-semibold">{judge?.full_name}</p>
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                {judge?.division} division judge
-              </p>
-            </div>
-          </section>
+        <div className="space-y-8">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="p-6">
+              <p className="text-xs uppercase tracking-[0.4em] text-slate-500">Current judge</p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">{judge.full_name}</h2>
+              <p className="text-sm text-slate-400">{judge.division} division</p>
+              <div className="mt-6 grid grid-cols-3 gap-4 text-center text-sm">
+                <div>
+                  <p className="text-2xl font-semibold text-white">{contestants.length}</p>
+                  <p className="text-slate-400">Contestants</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-white">{categories.length}</p>
+                  <p className="text-slate-400">Categories</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-white">{totalLocked}</p>
+                  <p className="text-slate-400">Locked rows</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-6">
+              <p className="text-xs uppercase tracking-[0.4em] text-slate-500">Instructions</p>
+              <ul className="mt-4 space-y-3 text-sm text-slate-300">
+                <li>• Enter points exactly as indicated per criterion.</li>
+                <li>• Scores save per contestant row; saving locks the row.</li>
+                <li>• Contact the admin if any row needs to be reopened.</li>
+              </ul>
+            </Card>
+          </div>
 
-          <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <h2 className="text-sm font-semibold text-slate-200">Categories</h2>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => {
-                const isActive = category.id === selectedCategoryId;
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategoryId(category.id)}
-                    className={`rounded-full border px-3 py-1 text-xs transition ${
-                      isActive
-                        ? 'border-slate-100 bg-slate-100/10 text-white'
-                        : 'border-slate-700 text-slate-300 hover:border-slate-400'
-                    }`}
-                  >
-                    {category.label}
-                  </button>
-                );
-              })}
+          <Card className="p-0">
+            <div className="border-b border-white/5 px-6 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Categories</p>
+                  <h3 className="text-lg font-semibold text-white">
+                    {currentCategory?.label ?? 'Choose a category'}
+                  </h3>
+                </div>
+                <Tabs
+                  value={selectedCategoryId ?? ''}
+                  onValueChange={(val) => setSelectedCategoryId(val)}
+                >
+                  <ScrollArea className="max-w-full">
+                    <TabsList className="inline-flex gap-2 rounded-full bg-white/5 p-1">
+                      {categories.map((category) => (
+                        <TabsTrigger
+                          key={category.id}
+                          value={category.id}
+                          className="rounded-full px-4 py-2 text-xs font-medium text-slate-300 data-[state=active]:bg-white data-[state=active]:text-slate-900"
+                        >
+                          {category.label}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </ScrollArea>
+                </Tabs>
+              </div>
             </div>
-          </section>
 
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            {!selectedCategoryId ? (
-              <p className="text-sm text-slate-400">
-                Choose a category above to start scoring contestants.
-              </p>
-            ) : contestants.length === 0 ? (
-              <p className="text-sm text-slate-400">
-                No contestants have been added for this division yet.
-              </p>
-            ) : (
-              <>
-                <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Category
-                    </p>
-                    <h2 className="text-lg font-semibold">
-                      {currentCategory?.label ?? 'Category'}
-                    </h2>
-                    <p className="text-xs text-slate-400">
-                      Enter scores like a sheet: one row per contestant, one column per
-                      criterion.
-                    </p>
-                  </div>
-                </header>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-800 text-xs">
+            <div className="p-6">
+              {!selectedCategoryId ? (
+                <p className="text-sm text-slate-400">Select a category to start judging.</p>
+              ) : contestants.length === 0 ? (
+                <p className="text-sm text-slate-400">
+                  Contestants for this division are not yet available.
+                </p>
+              ) : (
+                <ScrollArea className="max-h-[600px] overflow-auto">
+                  <table className="min-w-full divide-y divide-white/5 text-sm">
                     <thead>
-                      <tr className="bg-slate-900/80 text-slate-300">
-                        <th className="px-3 py-2 text-left"># / Contestant</th>
+                      <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                        <th className="px-3 py-2">Contestant</th>
                         {criteria.map((criterion) => (
                           <th key={criterion.id} className="px-3 py-2 text-center">
-                            <div className="flex flex-col items-center gap-0.5">
-                              <span>{criterion.label}</span>
-                              <span className="text-[10px] text-slate-500">
-                                {(criterion.percentage * 100).toFixed(0)}%
-                              </span>
+                            <div>{criterion.label}</div>
+                            <div className="text-[10px] text-slate-500">
+                              max {Math.round(criterion.percentage * 100)}
                             </div>
                           </th>
                         ))}
-                        <th className="px-3 py-2 text-center">Status</th>
+                        <th className="px-3 py-2 text-center">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-white/5">
                       {contestants.map((contestant) => {
                         const isLockedForContestant = Boolean(
                           locksQuery.data?.some(
@@ -239,14 +258,20 @@ export function JudgeScoringPage() {
                           )
                         );
                         return (
-                          <tr key={contestant.id} className="hover:bg-slate-900/60">
-                            <td className="whitespace-nowrap px-3 py-2 text-left text-xs">
-                              <div className="font-semibold text-slate-100">
-                                #{contestant.number.toString().padStart(2, '0')}
-                              </div>
-                              <div className="text-[11px] text-slate-400">
+                          <motion.tr
+                            key={contestant.id}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="transition hover:bg-white/5"
+                          >
+                            <td className="px-3 py-3">
+                              <div className="font-medium text-white">
+                                #{contestant.number.toString().padStart(2, '0')}{' '}
                                 {contestant.full_name}
                               </div>
+                              <p className="text-xs text-slate-500">
+                                {contestant.division} division
+                              </p>
                             </td>
                             {criteria.map((criterion) => {
                               const value =
@@ -259,16 +284,14 @@ export function JudgeScoringPage() {
                                     min={0}
                                     max={max}
                                     step={0.1}
-                                    className="w-16 rounded-md border border-slate-700 bg-slate-950 px-1 py-1 text-right text-xs focus:border-slate-400 focus:outline-none"
+                                    className="w-20 rounded-2xl border border-white/10 bg-white/5 px-2 py-1 text-center text-sm text-white focus:border-white/40 focus:outline-none"
                                     disabled={isLockedForContestant}
                                     value={value}
                                     onChange={(e) => {
                                       const next = e.target.value;
-                                      // Hard limit in UI as well
                                       if (next !== '') {
                                         const n = Number(next);
-                                        if (!Number.isNaN(n) && n > max) return;
-                                        if (!Number.isNaN(n) && n < 0) return;
+                                        if (!Number.isNaN(n) && (n > max || n < 0)) return;
                                       }
                                       setSheetValues((prev) => ({
                                         ...prev,
@@ -282,15 +305,13 @@ export function JudgeScoringPage() {
                                 </td>
                               );
                             })}
-                            <td className="px-3 py-2 text-center">
+                            <td className="px-3 py-3 text-center">
                               {isLockedForContestant ? (
-                                <span className="rounded-full border border-green-400/40 px-2 py-0.5 text-[10px] font-medium text-green-300">
-                                  Locked
-                                </span>
+                                <Badge variant="success">Locked</Badge>
                               ) : (
                                 <Button
                                   size="sm"
-                                  className="text-xs"
+                                  className="rounded-full px-4 text-xs"
                                   disabled={submitMutation.isPending}
                                   onClick={async () => {
                                     const rowValues = sheetValues[contestant.id] ?? {};
@@ -314,15 +335,15 @@ export function JudgeScoringPage() {
                                 </Button>
                               )}
                             </td>
-                          </tr>
+                          </motion.tr>
                         );
                       })}
                     </tbody>
                   </table>
-                </div>
-              </>
-            )}
-          </section>
+                </ScrollArea>
+              )}
+            </div>
+          </Card>
         </div>
       )}
     </AppShell>
