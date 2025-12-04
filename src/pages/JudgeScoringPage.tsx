@@ -29,9 +29,7 @@ export function JudgeScoringPage() {
   const setContestants = useScoringStore((state) => state.setContestants);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [sheetValues, setSheetValues] = useState<
-    Record<string, Record<string, string>>
-  >({});
+  const [sheetValues, setSheetValues] = useState<Record<string, Record<string, string>>>({});
 
   const judgeQuery = useJudgeSession();
 
@@ -47,7 +45,6 @@ export function JudgeScoringPage() {
     enabled: Boolean(judge?.division)
   });
 
-  // Update store when data changes (React Query v5 pattern)
   useEffect(() => {
     if (categoriesQuery.data) {
       setCategories(categoriesQuery.data);
@@ -133,8 +130,6 @@ export function JudgeScoringPage() {
     }
   }, [categories, selectedCategoryId]);
 
-  const ready = !judgeQuery.isLoading && Boolean(judge);
-
   useEffect(() => {
     if (!scoresSheetQuery.data) return;
     const next: Record<string, Record<string, string>> = {};
@@ -150,10 +145,7 @@ export function JudgeScoringPage() {
   const totalLocked = useMemo(() => locksQuery.data?.length ?? 0, [locksQuery.data]);
 
   return (
-    <AppShell
-      title="Judge Scoring Panel"
-      showAdminLink={false}
-    >
+    <AppShell title="Judge Scoring Panel" showAdminLink={false}>
       {judgeQuery.isLoading ? (
         <p className="text-sm text-slate-600 dark:text-slate-400">Loading judge profile…</p>
       ) : !judge ? (
@@ -164,26 +156,40 @@ export function JudgeScoringPage() {
         <div className="space-y-8">
           <div className="grid gap-6 lg:grid-cols-2">
             <Card className="p-6">
-              <p className="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">Current Judge</p>
-              <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">{judge.full_name}</h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 capitalize">{judge.division} Division</p>
+              <p className="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">
+                Current Judge
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
+                {judge.full_name}
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 capitalize">
+                {judge.division} Division
+              </p>
               <div className="mt-6 grid grid-cols-3 gap-4 text-center text-sm">
                 <div>
-                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">{contestants.length}</p>
+                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+                    {contestants.length}
+                  </p>
                   <p className="text-slate-600 dark:text-slate-400">Contestants</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">{categories.length}</p>
+                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+                    {categories.length}
+                  </p>
                   <p className="text-slate-600 dark:text-slate-400">Categories</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">{totalLocked}</p>
+                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+                    {totalLocked}
+                  </p>
                   <p className="text-slate-600 dark:text-slate-400">Locked Rows</p>
                 </div>
               </div>
             </Card>
             <Card className="p-6">
-              <p className="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">Instructions</p>
+              <p className="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">
+                Instructions
+              </p>
               <ul className="mt-4 space-y-3 text-sm text-slate-700 dark:text-slate-300">
                 <li>• Enter points exactly as indicated per criterion.</li>
                 <li>• Scores save per contestant row; saving locks the row.</li>
@@ -196,7 +202,9 @@ export function JudgeScoringPage() {
             <div className="border-b border-slate-200 px-6 py-4 dark:border-white/5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">Categories</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
+                    Categories
+                  </p>
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                     {currentCategory?.label ?? 'Choose a category'}
                   </h3>
@@ -224,7 +232,9 @@ export function JudgeScoringPage() {
 
             <div className="p-6">
               {!selectedCategoryId ? (
-                <p className="text-sm text-slate-600 dark:text-slate-400">Select a category to start judging.</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Select a category to start judging.
+                </p>
               ) : contestants.length === 0 ? (
                 <p className="text-sm text-slate-600 dark:text-slate-400">
                   Contestants for this division are not yet available.
@@ -243,6 +253,7 @@ export function JudgeScoringPage() {
                             </div>
                           </th>
                         ))}
+                        <th className="px-3 py-2 text-center">Total</th>
                         <th className="px-3 py-2 text-center">Action</th>
                       </tr>
                     </thead>
@@ -301,6 +312,25 @@ export function JudgeScoringPage() {
                                 </td>
                               );
                             })}
+                            <td className="px-3 py-3 text-center">
+                              {(() => {
+                                const rowValues = sheetValues[contestant.id] ?? {};
+                                const total = criteria.reduce((sum, criterion) => {
+                                  const raw = rowValues[criterion.id];
+                                  if (raw === undefined || raw === '') return sum;
+                                  const n = Number(raw);
+                                  if (Number.isNaN(n)) return sum;
+                                  return sum + n;
+                                }, 0);
+                                return isLockedForContestant ? (
+                                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                                    {total.toFixed(1)}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 dark:text-slate-600">—</span>
+                                );
+                              })()}
+                            </td>
                             <td className="px-3 py-3 text-center">
                               {isLockedForContestant ? (
                                 <Badge variant="success">Locked</Badge>
