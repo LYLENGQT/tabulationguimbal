@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { Crown, Medal, Sparkles, Trophy } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
 import {
@@ -12,11 +13,21 @@ import type { CategorySlug } from '../types/scoring';
 import { CATEGORY_CONFIG } from '../constants/scoring';
 
 const highlightClassForRank = (rank: number) => {
-  if (rank === 1) return 'bg-amber-100 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200';
-  if (rank === 2) return 'bg-slate-200 text-slate-900 dark:bg-slate-300/10 dark:text-slate-100';
-  if (rank === 3) return 'bg-orange-100 text-orange-900 dark:bg-orange-500/10 dark:text-orange-200';
+  if (rank === 1) return 'bg-gradient-to-r from-amber-100/80 to-amber-50/60 text-amber-700 dark:from-amber-500/20 dark:to-amber-500/10 dark:text-amber-50';
+  if (rank === 2) return 'bg-gradient-to-r from-slate-200/80 to-slate-100/60 text-slate-700 dark:from-slate-400/20 dark:to-slate-400/10 dark:text-slate-50';
+  if (rank === 3) return 'bg-gradient-to-r from-orange-100/80 to-orange-50/60 text-orange-700 dark:from-orange-500/20 dark:to-orange-500/10 dark:text-orange-50';
   return '';
 };
+
+const logoModules = import.meta.glob('../../logos/*.{jpg,jpeg,png,webp}', {
+  eager: true,
+  as: 'url'
+});
+
+const SCHOOL_LOGOS = Object.entries(logoModules).map(([path, src]) => {
+  const filename = path.split('/').pop()?.replace(/\.[^/.]+$/, '') ?? '';
+  return { name: filename, src };
+});
 
 export function RankingsPage() {
   const [selectedCategorySlug, setSelectedCategorySlug] =
@@ -72,7 +83,7 @@ export function RankingsPage() {
   if (!roleChecked) {
     return (
       <AppShell title="Live Rankings" showAdminLink={false}>
-        <p className="text-sm text-slate-600 dark:text-slate-400 px-6 py-8">Loading access…</p>
+        <p className="text-sm text-slate-400 px-6 py-8">Loading access…</p>
       </AppShell>
     );
   }
@@ -86,18 +97,68 @@ export function RankingsPage() {
       showAdminLink={isAdmin}
       actions={
         <Link to={backHref}>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="rounded-xl">
             {backLabel}
           </Button>
         </Link>
       }
     >
       <div className="space-y-8">
-        <section className="rounded-2xl border border-slate-200 bg-white/50 p-6 dark:border-slate-800 dark:bg-slate-900/60">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Overall Ranking (Ranking Method)</h2>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-            Lowest total points wins. Rank 1 = 1 pt, Rank 2 = 2 pts, etc.
-          </p>
+        <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-r from-white via-slate-50 to-slate-100 p-6 shadow-sm dark:border-white/10 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-950">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white shadow-sm dark:bg-white dark:text-slate-900">
+                <Sparkles className="h-4 w-4" />
+                Live Rankings
+              </div>
+              <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
+                Real-time placements with visual highlights for the top scorers.
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Totals refresh automatically. Top 3 placements are emphasized for quick visibility.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+              <Crown className="h-4 w-4 text-amber-500" />
+              Overall + per-category standings
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
+              Participating Schools
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+              {SCHOOL_LOGOS.map((logo) => (
+                <div
+                  key={logo.name}
+                  className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10"
+                >
+                  <img
+                    src={logo.src}
+                    alt={logo.name}
+                    className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-white/10"
+                  />
+                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{logo.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Overall Ranking (Ranking Method)</h2>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Lowest total points wins. Rank 1 = 1 pt, Rank 2 = 2 pts, etc.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-200">
+              <Trophy className="h-4 w-4 text-amber-500" />
+              Auto-refreshing
+            </div>
+          </div>
           <div className="mt-4 grid gap-6 md:grid-cols-2">
             {[
               { title: 'Male Division', rows: maleOverall.data },
@@ -105,30 +166,35 @@ export function RankingsPage() {
             ].map(({ title, rows }) => (
               <div
                 key={title}
-                className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/60"
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-950/40"
               >
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
-                <div className="mt-3 overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200 text-xs dark:divide-slate-800">
-                    <thead>
-                      <tr className="text-left text-[11px] uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                        <th className="py-2">Place</th>
-                        <th className="py-2">Contestant</th>
-                        <th className="py-2 text-center">Total Points</th>
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-white/10 dark:text-white">
+                  <span>{title}</span>
+                  <Medal className="h-4 w-4 text-amber-500" />
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 text-xs dark:divide-white/10">
+                    <thead className="sticky top-0 bg-slate-50 text-left uppercase tracking-wide text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+                      <tr>
+                        <th className="px-4 py-3">Place</th>
+                        <th className="px-4 py-3">Contestant</th>
+                        <th className="px-4 py-3 text-center">Total Points</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/30">
                       {rows && rows.length > 0 ? (
-                        rows.map((row) => {
+                        rows.map((row, idx) => {
                           const cls = highlightClassForRank(row.final_placement);
+                          const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/40';
                           return (
-                            <tr key={row.contestant_id} className={cls}>
-                              <td className="py-2 text-sm text-slate-900 dark:text-white">{row.final_placement}</td>
-                              <td className="py-2 text-slate-900 dark:text-white">
-                                #{row.number?.toString().padStart(2, '0')}{' '}
-                                {row.full_name}
+                            <tr key={row.contestant_id} className={`${cls} ${zebra} transition hover:bg-slate-100 dark:hover:bg-white/10`}>
+                              <td className="px-4 py-3 text-sm font-semibold">{row.final_placement}</td>
+                              <td className="px-4 py-3">
+                                <div className="font-semibold text-slate-900 dark:text-white">
+                                  #{row.number?.toString().padStart(2, '0')} {row.full_name}
+                                </div>
                               </td>
-                              <td className="py-2 text-center text-slate-900 dark:text-white">
+                              <td className="px-4 py-3 text-center font-mono">
                                 {row.total_points?.toFixed(2)}
                               </td>
                             </tr>
@@ -136,7 +202,7 @@ export function RankingsPage() {
                         })
                       ) : (
                         <tr>
-                          <td className="py-2 text-xs text-slate-600 dark:text-slate-400" colSpan={3}>
+                          <td className="px-4 py-3 text-xs" colSpan={3}>
                             No records found.
                           </td>
                         </tr>
@@ -149,7 +215,7 @@ export function RankingsPage() {
           </div>
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white/50 p-6 dark:border-slate-800 dark:bg-slate-900/60">
+        <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Per-Category Rankings</h2>
@@ -162,10 +228,10 @@ export function RankingsPage() {
                 <button
                   key={cat.slug}
                   onClick={() => setSelectedCategorySlug(cat.slug)}
-                  className={`rounded-full border px-3 py-1 text-xs transition ${
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                     selectedCategorySlug === cat.slug
-                      ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100/10 dark:text-white'
-                      : 'border-slate-300 text-slate-700 hover:border-slate-500 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-400'
+                      ? 'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-white dark:bg-white dark:text-slate-900'
+                      : 'border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-white/10 dark:text-slate-200 dark:hover:border-white/40'
                   }`}
                 >
                   {cat.label}
@@ -181,30 +247,35 @@ export function RankingsPage() {
             ].map(({ title, rows }) => (
               <div
                 key={title}
-                className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/60"
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-950/40"
               >
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
-                <div className="mt-3 overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200 text-xs dark:divide-slate-800">
-                    <thead>
-                      <tr className="text-left text-[11px] uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                        <th className="py-2">Rank</th>
-                        <th className="py-2">Contestant</th>
-                        <th className="py-2 text-center">Category Score</th>
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-white/10 dark:text-white">
+                  <span>{title}</span>
+                  <Medal className="h-4 w-4 text-emerald-500" />
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 text-xs dark:divide-white/10">
+                    <thead className="sticky top-0 bg-slate-50 text-left uppercase tracking-wide text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+                      <tr>
+                        <th className="px-4 py-3">Rank</th>
+                        <th className="px-4 py-3">Contestant</th>
+                        <th className="px-4 py-3 text-center">Category Score</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/30">
                       {rows && rows.length > 0 ? (
-                        rows.map((row) => {
+                        rows.map((row, idx) => {
                           const cls = highlightClassForRank(row.rank);
+                          const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/40';
                           return (
-                            <tr key={row.contestant_id} className={cls}>
-                              <td className="py-2 text-sm text-slate-900 dark:text-white">{row.rank}</td>
-                              <td className="py-2 text-slate-900 dark:text-white">
-                                #{row.number?.toString().padStart(2, '0')}{' '}
-                                {row.full_name}
+                            <tr key={row.contestant_id} className={`${cls} ${zebra} transition hover:bg-slate-100 dark:hover:bg-white/10`}>
+                              <td className="px-4 py-3 text-sm font-semibold">{row.rank}</td>
+                              <td className="px-4 py-3">
+                                <div className="font-semibold text-slate-900 dark:text-white">
+                                  #{row.number?.toString().padStart(2, '0')} {row.full_name}
+                                </div>
                               </td>
-                              <td className="py-2 text-center text-slate-900 dark:text-white">
+                              <td className="px-4 py-3 text-center font-mono">
                                 {row.category_score?.toFixed(3)}
                               </td>
                             </tr>
@@ -212,7 +283,7 @@ export function RankingsPage() {
                         })
                       ) : (
                         <tr>
-                          <td className="py-2 text-xs text-slate-600 dark:text-slate-400" colSpan={3}>
+                          <td className="px-4 py-3 text-xs" colSpan={3}>
                             No records found.
                           </td>
                         </tr>

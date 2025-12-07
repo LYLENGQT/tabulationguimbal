@@ -314,4 +314,208 @@ export const fetchScoresForExport = async () => {
   return data;
 };
 
+export interface CategoryScoreSummary {
+  categoryId: string;
+  categoryLabel: string;
+  division: Division;
+  contestants: {
+    contestantId: string;
+    candidateNumber: number;
+    judgeScores: { judgeId: string; judgeName: string; totalScore: number }[];
+    average: number;
+    rank: number;
+  }[];
+  judges: { id: string; name: string }[];
+  totals: {
+    judgeTotals: { judgeId: string; total: number }[];
+    overallAverage: number;
+  };
+}
+
+export const fetchCategoryScoreSummary = async (
+  categoryId: string,
+  division: Division
+): Promise<CategoryScoreSummary | null> => {
+  // Fetch all scores for this category and division
+  const { data: scores, error: scoresError } = await supabase
+    .from('scores')
+    .select(
+      `
+      judge_id,
+      contestant_id,
+      weighted_score,
+      contestants!inner(id, number, division),
+      judges!inner(id, full_name)
+    `
+    )
+    .eq('category_id', categoryId);
+
+  if (scoresError) throw scoresError;
+  if (!scores || scores.length === 0) return null;
+
+  // Filter by division
+  const filteredScores = scores.filter((score: any) => score.contestants?.division === division);
+  if (filteredScores.length === 0) return null;
+
+  // Fetch category info
+  const { data: category, error: catError } = await supabase
+    .from('categories')
+    .select('id, label')
+    .eq('id', categoryId)
+    .single();
+
+  if (catError) throw catError;
+
+  // Fetch all judges for this division
+  const { data: judges, error: judgesError } = await supabase
+    .from('judges')
+    .select('id, full_name')
+    .eq('division', division)
+    .eq('is_active', true);
+
+  if (judgesError) throw judgesError;
+
+  // Group scores by contestant and judge
+  const contestantMap = new Map<
+    string,
+    {
+      contestantId: string;
+      candidateNumber: number;
+      judgeScores: Map<string, number>;
+    }
+  >();
+
+  filteredScores.forEach((score: any) => {
+    const contestantId = score.contestant_id;
+    const judgeId = score.judge_id;
+    const weightedScore = score.weighted_score;
+
+    if (!contestantMap.has(contestantId)) {
+      contestantMap.set(contestantId, {
+        contestantId,
+        candidateNumber: score.contestants.number,
+        judgeScores: new Map()
+      });
+    }
+
+    const contestant = contestantMap.get(contestantId)!;
+    const currentTotal = contestant.judgeScores.get(judgeId) || 0;
+    contestant.judgeScores.set(judgeId, currentTotal + weightedScore);
+  });
+
+  // Calculate totals per judge per contestant and averages
+  const contestants = Array.from(contestantMap.values())
+    .map((contestant) => {
+      const judgeScores = Array.from(contestant.judgeScores.entries()).map(([judgeId, totalScore]) => {
+        const judge = judges?.find((j) => j.id === judgeId);
+        return {
+          judgeId,
+          judgeName: judge?.full_name || 'Unknown',
+          totalScore: Number(totalScore.toFixed(2))
+        };
+      });
+
+      // Calculate average across all judges
+      const scores = Array.from(contestant.judgeScores.values());
+      const average = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+
+      return {
+        contestantId: contestant.contestantId,
+        candidateNumber: contestant.candidateNumber,
+        judgeScores,
+        average: Number(average.toFixed(2)),
+        rank: 0 // Will be set after sorting
+      };
+    })
+    .sort((a, b) => b.average - a.average)
+    .map((contestant, index) => ({
+      ...contestant,
+      rank: index + 1
+    }));
+
+  // Calculate totals per judge
+  const judgeTotals = (judges || []).map((judge) => {
+    const total = contestants.reduce((sum, contestant) => {
+      const judgeScore = contestant.judgeScores.find((js) => js.judgeId === judge.id);
+      return sum + (judgeScore?.totalScore || 0);
+    }, 0);
+    return {
+      judgeId: judge.id,
+      total: Number(total.toFixed(2))
+    };
+  });
+
+  // Calculate overall average
+  const overallAverage =
+    judgeTotals.length > 0
+      ? judgeTotals.reduce((sum, jt) => sum + jt.total, 0) / judgeTotals.length
+      : 0;
+
+  return {
+    categoryId: category.id,
+    categoryLabel: category.label,
+    division,
+    contestants,
+    judges: (judges || []).map((j) => ({ id: j.id, name: j.full_name })),
+    totals: {
+      judgeTotals,
+      overallAverage: Number(overallAverage.toFixed(2))
+    }
+  };
+};
+
+export const resetSystem = async () => {
+  // Fetch all judges before deletion to get their emails
+  const { data: judges, error: judgesError } = await supabase
+    .from('judges')
+    .select('email');
+
+  if (judgesError) throw judgesError;
+
+  const judgeEmails = judges?.map((j) => j.email).filter(Boolean) || [];
+
+  // Delete all database records
+  // Delete in order to respect foreign key constraints
+  const deleteOperations = [
+    supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000'), // Delete all
+    supabase.from('judge_category_locks').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    supabase.from('computed_scores').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    supabase.from('final_rankings').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    supabase.from('contestants').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    supabase.from('judges').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  ];
+
+  for (const operation of deleteOperations) {
+    const { error } = await operation;
+    if (error) throw error;
+  }
+
+  // Refresh materialized views
+  const { error: refreshError } = await supabase.rpc('refresh_leaderboards');
+  if (refreshError) {
+    console.warn('Failed to refresh leaderboards', refreshError);
+  }
+
+  // Delete authentication users via Edge Function
+  if (judgeEmails.length > 0) {
+    try {
+      const { data, error: functionError } = await supabase.functions.invoke('delete-auth-users', {
+        body: { judgeEmails }
+      });
+
+      if (functionError) {
+        console.error('Failed to delete auth users:', functionError);
+        // Don't throw - database records are already deleted
+      } else {
+        console.log('Auth users deleted:', data);
+      }
+    } catch (error) {
+      console.error('Error calling delete-auth-users function:', error);
+      // Don't throw - database records are already deleted
+    }
+  }
+
+  return true;
+};
+
 

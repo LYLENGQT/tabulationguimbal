@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { ClipboardCheck, Crown, Info, Lock, Save } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -155,30 +156,37 @@ export function JudgeScoringPage() {
       ) : (
         <div className="space-y-8">
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="p-6">
-              <p className="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">
-                Current Judge
-              </p>
-              <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
-                {judge.full_name}
-              </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 capitalize">
-                {judge.division} Division
-              </p>
-              <div className="mt-6 grid grid-cols-3 gap-4 text-center text-sm">
+            <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+              <div className="flex items-start justify-between gap-4">
                 <div>
+                  <p className="text-xs uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">
+                    Current Judge
+                  </p>
+                  <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
+                    {judge.full_name}
+                  </h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 capitalize">
+                    {judge.division} division
+                  </p>
+                </div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-sm dark:from-white dark:to-slate-200 dark:text-slate-900">
+                  <Crown className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="mt-6 grid grid-cols-3 gap-4 text-center text-sm">
+                <div className="rounded-xl bg-slate-100/70 p-3 dark:bg-white/5">
                   <p className="text-2xl font-semibold text-slate-900 dark:text-white">
                     {contestants.length}
                   </p>
                   <p className="text-slate-600 dark:text-slate-400">Contestants</p>
                 </div>
-                <div>
+                <div className="rounded-xl bg-slate-100/70 p-3 dark:bg-white/5">
                   <p className="text-2xl font-semibold text-slate-900 dark:text-white">
                     {categories.length}
                   </p>
                   <p className="text-slate-600 dark:text-slate-400">Categories</p>
                 </div>
-                <div>
+                <div className="rounded-xl bg-slate-100/70 p-3 dark:bg-white/5">
                   <p className="text-2xl font-semibold text-slate-900 dark:text-white">
                     {totalLocked}
                   </p>
@@ -186,20 +194,27 @@ export function JudgeScoringPage() {
                 </div>
               </div>
             </Card>
-            <Card className="p-6">
-              <p className="text-xs uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">
+            <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+              <p className="text-xs uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">
                 Instructions
               </p>
-              <ul className="mt-4 space-y-3 text-sm text-slate-700 dark:text-slate-300">
-                <li>• Enter points exactly as indicated per criterion.</li>
-                <li>• Scores save per contestant row; saving locks the row.</li>
-                <li>• Contact the admin if any row needs to be reopened.</li>
-              </ul>
+              <div className="mt-4 space-y-3 text-sm text-slate-700 dark:text-slate-200">
+                {[
+                  'Enter points exactly as indicated per criterion.',
+                  'Scores save per contestant row; saving locks the row.',
+                  'Contact the admin if any row needs to be reopened.'
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 shadow-sm dark:border-white/10 dark:bg-white/5">
+                    <Info className="mt-0.5 h-4 w-4 text-slate-500 dark:text-slate-300" />
+                    <p>{item}</p>
+                  </div>
+                ))}
+              </div>
             </Card>
           </div>
 
-          <Card className="p-0">
-            <div className="border-b border-slate-200 px-6 py-4 dark:border-white/5">
+          <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-0 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+            <div className="border-b border-slate-200 px-6 py-4 dark:border-white/10">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
@@ -240,39 +255,40 @@ export function JudgeScoringPage() {
                   Contestants for this division are not yet available.
                 </p>
               ) : (
-                <ScrollArea className="max-h-[600px] overflow-auto">
-                  <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-white/5">
-                    <thead>
-                      <tr className="text-left text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                        <th className="px-3 py-2">Contestant</th>
+                <ScrollArea className="max-h-[620px] overflow-auto rounded-xl border border-slate-200/80 shadow-sm dark:border-white/10">
+                  <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-white/10">
+                    <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+                      <tr>
+                        <th className="px-3 py-3">Contestant</th>
                         {criteria.map((criterion) => (
-                          <th key={criterion.id} className="px-3 py-2 text-center">
+                          <th key={criterion.id} className="px-3 py-3 text-center">
                             <div className="font-medium">{criterion.label}</div>
-                            <div className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            <div className="mt-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
                               {Math.round(criterion.percentage * 100)}%
                             </div>
                           </th>
                         ))}
-                        <th className="px-3 py-2 text-center">Total</th>
-                        <th className="px-3 py-2 text-center">Action</th>
+                        <th className="px-3 py-3 text-center">Total</th>
+                        <th className="px-3 py-3 text-center">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                      {contestants.map((contestant) => {
+                    <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/40">
+                      {contestants.map((contestant, idx) => {
                         const isLockedForContestant = Boolean(
                           locksQuery.data?.some(
                             (lock) => lock.contestant_id === contestant.id
                           )
                         );
+                        const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/50';
                         return (
                           <motion.tr
                             key={contestant.id}
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="transition hover:bg-slate-50 dark:hover:bg-white/5"
+                            className={`${zebra} transition hover:bg-slate-100 dark:hover:bg-white/10`}
                           >
                             <td className="px-3 py-3">
-                              <div className="font-medium text-slate-900 dark:text-white">
+                              <div className="font-semibold text-slate-900 dark:text-white">
                                 #{contestant.number.toString().padStart(2, '0')}{' '}
                                 {contestant.full_name}
                               </div>
@@ -291,7 +307,7 @@ export function JudgeScoringPage() {
                                     min={0}
                                     max={max}
                                     step={0.1}
-                                    className="w-20 rounded-2xl border border-slate-300 bg-white px-2 py-1 text-center text-sm text-slate-900 focus:border-slate-500 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/40"
+                                    className="h-10 w-24 rounded-lg border border-slate-200 bg-white px-2 text-center text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/30 dark:focus:ring-white/10"
                                     disabled={isLockedForContestant}
                                     value={value}
                                     onChange={(e) => {
@@ -333,11 +349,14 @@ export function JudgeScoringPage() {
                             </td>
                             <td className="px-3 py-3 text-center">
                               {isLockedForContestant ? (
-                                <Badge variant="success">Locked</Badge>
+                                <Badge variant="success" className="rounded-full bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-100">
+                                  <Lock className="mr-1 h-3.5 w-3.5" />
+                                  Locked
+                                </Badge>
                               ) : (
                                 <Button
                                   size="sm"
-                                  className="rounded-full px-4 text-xs"
+                                  className="rounded-full px-4 text-xs shadow-sm"
                                   disabled={submitMutation.isPending}
                                   onClick={async () => {
                                     const rowValues = sheetValues[contestant.id] ?? {};
@@ -357,6 +376,7 @@ export function JudgeScoringPage() {
                                     });
                                   }}
                                 >
+                                  <Save className="mr-1.5 h-3.5 w-3.5" />
                                   Save
                                 </Button>
                               )}

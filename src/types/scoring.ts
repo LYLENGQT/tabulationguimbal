@@ -47,6 +47,7 @@ export type CriterionSlug =
 export interface Judge {
   id: string;
   full_name: string;
+  email?: string;
   division: Division;
 }
 
