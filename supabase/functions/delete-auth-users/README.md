@@ -30,12 +30,12 @@ When the admin resets the system, this function:
 
 The function is called automatically by the `resetSystem()` function in `src/services/supabaseApi.ts`.
 
-**Request Body:**
+**Request Body:** (Optional - can be empty `{}`)
 ```json
-{
-  "judgeEmails": ["judge1@example.com", "judge2@example.com"]
-}
+{}
 ```
+
+The function will delete **all authentication users except the admin** (admin@mrmsteen2025.com), regardless of the request body. This ensures all judge accounts are deleted during system reset.
 
 **Response:**
 ```json

@@ -465,16 +465,7 @@ export const fetchCategoryScoreSummary = async (
 };
 
 export const resetSystem = async () => {
-  // Fetch all judges before deletion to get their emails
-  const { data: judges, error: judgesError } = await supabase
-    .from('judges')
-    .select('email');
-
-  if (judgesError) throw judgesError;
-
-  const judgeEmails = judges?.map((j) => j.email).filter(Boolean) || [];
-
-  // Delete all database records
+  // Delete all database records first
   // Delete in order to respect foreign key constraints
   const deleteOperations = [
     supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000'), // Delete all
@@ -497,22 +488,21 @@ export const resetSystem = async () => {
   }
 
   // Delete authentication users via Edge Function
-  if (judgeEmails.length > 0) {
-    try {
-      const { data, error: functionError } = await supabase.functions.invoke('delete-auth-users', {
-        body: { judgeEmails }
-      });
+  // The function will delete all users except admin
+  try {
+    const { data, error: functionError } = await supabase.functions.invoke('delete-auth-users', {
+      body: {} // No need to pass emails, function deletes all non-admin users
+    });
 
-      if (functionError) {
-        console.error('Failed to delete auth users:', functionError);
-        // Don't throw - database records are already deleted
-      } else {
-        console.log('Auth users deleted:', data);
-      }
-    } catch (error) {
-      console.error('Error calling delete-auth-users function:', error);
-      // Don't throw - database records are already deleted
+    if (functionError) {
+      console.error('Failed to delete auth users:', functionError);
+      throw new Error(`Failed to delete auth users: ${functionError.message}`);
+    } else {
+      console.log('Auth users deleted:', data);
     }
+  } catch (error) {
+    console.error('Error calling delete-auth-users function:', error);
+    throw error; // Re-throw so user knows if auth deletion failed
   }
 
   return true;

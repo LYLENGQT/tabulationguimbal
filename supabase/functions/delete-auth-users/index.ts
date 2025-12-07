@@ -40,20 +40,7 @@ Deno.serve(async (req) => {
       }
     })
 
-    // Parse request body to get judge emails
-    const { judgeEmails } = await req.json()
-
-    if (!judgeEmails || !Array.isArray(judgeEmails)) {
-      return new Response(
-        JSON.stringify({ error: 'judgeEmails array is required' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    // Get all users
+    // Get all users (we'll delete all non-admin users regardless of request body)
     const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers()
 
     if (listError) {
@@ -66,29 +53,29 @@ Deno.serve(async (req) => {
       )
     }
 
-    const judgeEmailsLower = judgeEmails.map((email: string) => email?.toLowerCase()).filter(Boolean)
     const deletedUsers: string[] = []
     const failedDeletions: Array<{ email: string; error: string }> = []
+    const adminEmail = 'admin@mrmsteen2025.com'
 
-    // Delete judge users (skip admin user)
+    // Delete all users except admin
+    // Since we're resetting the system, we delete all non-admin users
     for (const user of usersData.users) {
       // Skip admin user
-      if (user.email?.toLowerCase() === 'admin@mrmsteen2025.com') {
+      const userEmail = user.email?.toLowerCase()
+      if (userEmail === adminEmail.toLowerCase()) {
         continue
       }
 
-      // Delete if email matches a judge email
-      if (user.email && judgeEmailsLower.includes(user.email.toLowerCase())) {
-        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id)
-        
-        if (deleteError) {
-          failedDeletions.push({
-            email: user.email,
-            error: deleteError.message
-          })
-        } else {
-          deletedUsers.push(user.email)
-        }
+      // Delete the user
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id)
+      
+      if (deleteError) {
+        failedDeletions.push({
+          email: user.email || user.id,
+          error: deleteError.message
+        })
+      } else {
+        deletedUsers.push(user.email || user.id)
       }
     }
 
