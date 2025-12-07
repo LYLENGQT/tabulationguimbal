@@ -8,9 +8,7 @@ import {
   Award,
   Download,
   Printer,
-  RefreshCw,
   ShieldCheck,
-  Sparkles,
   UserRound,
   Users
 } from 'lucide-react';
@@ -35,8 +33,8 @@ import {
   fetchCategoryScoreSummary,
   fetchJudges,
   fetchLeaderboard,
+  fetchOverallRankings,
   fetchScoresForExport,
-  refreshLeaderboard,
   resetSystem,
   supabaseAuth,
   updateJudge
@@ -44,7 +42,7 @@ import {
 import type { CategoryScoreSummary } from '../services/supabaseApi';
 import type { Category } from '../types/scoring';
 import type { Division } from '../types/scoring';
-import { downloadCsv, toCsv } from '../utils/export';
+import { downloadCsv, downloadExcelMultiSheet, toCsv } from '../utils/export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Badge } from '../components/ui/badge';
@@ -62,7 +60,6 @@ const judgeSchema = z.object({
 
 export function AdminDashboardPage() {
   const queryClient = useQueryClient();
-  const [divisionFilter, setDivisionFilter] = useState<Division>('male');
   const [activeTab, setActiveTab] = useState('contestants');
   const [editingJudgeId, setEditingJudgeId] = useState<string | null>(null);
   const [editingValues, setEditingValues] = useState<{
@@ -81,11 +78,6 @@ export function AdminDashboardPage() {
   const judgesQuery = useQuery({
     queryKey: ['judges'],
     queryFn: fetchJudges
-  });
-
-  const leaderboardQuery = useQuery({
-    queryKey: ['leaderboard', divisionFilter],
-    queryFn: () => fetchLeaderboard(divisionFilter)
   });
 
   const contestantForm = useForm<z.infer<typeof contestantSchema>>({
@@ -196,11 +188,6 @@ export function AdminDashboardPage() {
     }
   });
 
-  const refreshMutation = useMutation({
-    mutationFn: refreshLeaderboard,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
-  });
-
   const resetMutation = useMutation({
     mutationFn: resetSystem,
     onSuccess: () => {
@@ -212,6 +199,83 @@ export function AdminDashboardPage() {
   const handleExport = async () => {
     const rows = await fetchScoresForExport();
     downloadCsv('scores.csv', toCsv(rows));
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      // Fetch all data for multi-sheet export
+      const [scores, judges, contestants, categories, maleRankings, femaleRankings] = await Promise.all([
+        fetchScoresForExport(),
+        fetchJudges(),
+        fetchAllContestants(),
+        fetchCategories(),
+        fetchOverallRankings('male'),
+        fetchOverallRankings('female')
+      ]);
+
+      // Format data for Excel
+      const scoresData = scores.map((score: any) => ({
+        'Judge ID': score.judge_id,
+        'Contestant ID': score.contestant_id,
+        'Category ID': score.category_id,
+        'Criterion ID': score.criterion_id,
+        'Raw Score': score.raw_score,
+        'Weighted Score': score.weighted_score,
+        'Created At': score.created_at ? new Date(score.created_at).toLocaleString() : ''
+      }));
+
+      const judgesData = judges.map((judge: any) => ({
+        'ID': judge.id,
+        'Full Name': judge.full_name,
+        'Email': judge.email || '',
+        'Division': judge.division,
+        'Active': judge.is_active !== false ? 'Yes' : 'No'
+      }));
+
+      const contestantsData = contestants.map((contestant: any) => ({
+        'ID': contestant.id,
+        'Number': contestant.number,
+        'Full Name': contestant.full_name,
+        'Division': contestant.division,
+        'Active': contestant.is_active !== false ? 'Yes' : 'No'
+      }));
+
+      const categoriesData = categories.map((category: any) => ({
+        'ID': category.id,
+        'Slug': category.slug,
+        'Label': category.label,
+        'Weight': category.weight,
+        'Sort Order': category.sort_order,
+        'Active': category.is_active !== false ? 'Yes' : 'No'
+      }));
+
+      const maleRankingsData = maleRankings.map((rank: any) => ({
+        'Rank': rank.final_placement,
+        'Candidate Number': rank.number,
+        'Full Name': rank.full_name,
+        'Total Points': rank.total_points
+      }));
+
+      const femaleRankingsData = femaleRankings.map((rank: any) => ({
+        'Rank': rank.final_placement,
+        'Candidate Number': rank.number,
+        'Full Name': rank.full_name,
+        'Total Points': rank.total_points
+      }));
+
+      // Create multi-sheet Excel file
+      downloadExcelMultiSheet('pageant-data.xlsx', [
+        { name: 'Scores', data: scoresData },
+        { name: 'Male Rankings', data: maleRankingsData },
+        { name: 'Female Rankings', data: femaleRankingsData },
+        { name: 'Judges', data: judgesData },
+        { name: 'Candidates', data: contestantsData },
+        { name: 'Categories', data: categoriesData }
+      ]);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export Excel file. Please try again.');
+    }
   };
 
   const handleReset = async () => {
@@ -287,10 +351,10 @@ export function AdminDashboardPage() {
   }
 
   const summary = [
-    { label: 'Candidates', value: candidateCount, icon: Users, accent: 'bg-indigo-500/10 text-indigo-600' },
-    { label: 'Male Contestants', value: maleCount, icon: UserRound, accent: 'bg-sky-500/10 text-sky-600' },
-    { label: 'Female Contestants', value: femaleCount, icon: UserRound, accent: 'bg-rose-500/10 text-rose-600' },
-    { label: 'Judges', value: totalJudges, icon: ShieldCheck, accent: 'bg-emerald-500/10 text-emerald-600' }
+    { label: 'Candidates', value: candidateCount, icon: Users, color: 'text-indigo-600 dark:text-indigo-400' },
+    { label: 'Male Contestants', value: maleCount, icon: UserRound, color: 'text-blue-600 dark:text-blue-400' },
+    { label: 'Female Contestants', value: femaleCount, icon: UserRound, color: 'text-pink-600 dark:text-pink-400' },
+    { label: 'Judges', value: totalJudges, icon: ShieldCheck, color: 'text-emerald-600 dark:text-emerald-400' }
   ];
 
   return (
@@ -303,6 +367,10 @@ export function AdminDashboardPage() {
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
+          <Button variant="outline" onClick={handleExportExcel} className="rounded-xl border-slate-200 dark:border-white/10">
+            <Download className="mr-2 h-4 w-4" />
+            Export Excel
+          </Button>
           <Button
             variant="destructive"
             onClick={handleReset}
@@ -314,67 +382,36 @@ export function AdminDashboardPage() {
         </>
       }
     >
-      <div className="space-y-8">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm dark:border-white/10 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-950">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 text-white px-3 py-1 text-xs font-medium shadow-sm dark:bg-white dark:text-slate-900">
-                <Sparkles className="h-4 w-4" />
-                Admin Control Center
-              </div>
-              <p className="text-lg font-semibold text-slate-900 dark:text-white">
-                Manage candidates, judges, and scoring in one streamlined view.
-              </p>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
-                Use the tabs below to configure participants, handle judges, refresh leaderboards, and review category summaries.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-white/10 dark:bg-white/5">
-              <ShieldCheck className="h-4 w-4 text-emerald-500" />
-              <span className="text-xs font-medium text-slate-700 dark:text-slate-200">Role: Administrator</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="space-y-6 w-full">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           {summary.map((item) => (
-            <Card key={item.label} className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
-              <div className="flex items-center justify-between">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.accent}`}>
+            <Card key={item.label} className="border p-5">
+              <div className="flex items-center gap-3">
+                <div className={`${item.color}`}>
                   <item.icon className="h-5 w-5" />
                 </div>
-                <Badge className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-200">
-                  Live
-                </Badge>
+                <div className="flex-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{item.label}</p>
+                  <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{item.value}</p>
+                </div>
               </div>
-              <p className="mt-4 text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{item.label}</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">{item.value}</p>
             </Card>
           ))}
         </div>
 
-        <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6 flex w-full flex-wrap gap-2 rounded-full bg-slate-100 p-1 dark:bg-white/5">
-              <TabsTrigger value="contestants" className="rounded-full px-4 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900">
-                Contestants
-              </TabsTrigger>
-              <TabsTrigger value="judges" className="rounded-full px-4 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900">
-                Judges
-              </TabsTrigger>
-              <TabsTrigger value="leaderboard" className="rounded-full px-4 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900">
-                Leaderboard
-              </TabsTrigger>
-              <TabsTrigger value="scoring-summary" className="rounded-full px-4 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900">
-                Scoring Summary
-              </TabsTrigger>
+        <Card className="border p-6 w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="mb-6 grid w-full grid-cols-3">
+              <TabsTrigger value="contestants">Contestants</TabsTrigger>
+              <TabsTrigger value="judges">Judges</TabsTrigger>
+              <TabsTrigger value="scoring-summary">Scoring Summary</TabsTrigger>
             </TabsList>
 
             <TabsContent value="contestants" className="space-y-6">
               <div className="grid gap-6 lg:grid-cols-2">
-                <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+                <Card className="border p-5">
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
+                    <CardTitle className="flex items-center gap-2">
                       <Users className="h-5 w-5 text-slate-500" />
                       Generate Candidates
                     </CardTitle>
@@ -387,37 +424,33 @@ export function AdminDashboardPage() {
                       )}
                     >
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Number of Candidates</Label>
+                        <Label>Number of Candidates</Label>
                         <Input 
                           type="number" 
                           {...contestantForm.register('numberOfCandidates', { valueAsNumber: true })} 
                           min={1}
                           max={20}
-                          className="h-11 rounded-xl border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5"
                         />
                         {contestantForm.formState.errors.numberOfCandidates && (
                           <p className="text-xs text-rose-600 dark:text-rose-300">
                             {contestantForm.formState.errors.numberOfCandidates.message}
                           </p>
                         )}
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                          Creates the same count for male and female divisions. Example: 5 = 5 male + 5 female candidates.
-                        </p>
                       </div>
                       <Button
                         type="submit"
-                        className="w-full rounded-xl"
+                        className="w-full"
                         disabled={contestantMutation.isPending}
                       >
-                        {contestantMutation.isPending ? 'Generating…' : 'Generate Candidates'}
+                        {contestantMutation.isPending ? 'Generating…' : 'Generate'}
                       </Button>
                     </form>
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+                <Card className="border p-5">
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
+                    <CardTitle className="flex items-center gap-2">
                       <Award className="h-5 w-5 text-amber-500" />
                       Candidates on Record
                     </CardTitle>
@@ -436,22 +469,22 @@ export function AdminDashboardPage() {
                             const male = allContestants.find((c) => c.number === number && c.division === 'male');
                             const female = allContestants.find((c) => c.number === number && c.division === 'female');
                             return (
-                          <div
-                            key={number}
-                            className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white px-3 py-2 shadow-sm dark:border-white/10 dark:bg-white/5"
-                          >
-                            <div>
-                              <p className="font-semibold text-slate-900 dark:text-white">
-                                    Candidate #{String(number).padStart(2, '0')}
-                              </p>
-                                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                                    {male && female ? 'Male & Female' : male ? 'Male only' : 'Female only'}
-                                  </p>
-                            </div>
-                            <Badge className="rounded-full bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-100">
-                              Registered
-                            </Badge>
-                          </div>
+                           <div
+                             key={number}
+                             className="flex items-center justify-between rounded-lg border px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                           >
+                             <div>
+                               <p className="font-medium text-slate-900 dark:text-white">
+                                     Candidate #{String(number).padStart(2, '0')}
+                               </p>
+                                   <p className="text-xs text-slate-500 dark:text-slate-400">
+                                     {male && female ? 'Male & Female' : male ? 'Male only' : 'Female only'}
+                                   </p>
+                             </div>
+                             <Badge className="text-xs border">
+                               Active
+                             </Badge>
+                           </div>
                             );
                           })}
                       </div>
@@ -461,10 +494,10 @@ export function AdminDashboardPage() {
               </div>
             </TabsContent>
 
-            <TabsContent value="judges" className="space-y-6">
-              <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+            <TabsContent value="judges" className="space-y-6 w-full">
+              <Card className="border p-5 w-full">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
+                  <CardTitle className="flex items-center gap-2">
                     <ShieldCheck className="h-5 w-5 text-emerald-500" />
                     Invite Judge
                   </CardTitle>
@@ -475,16 +508,16 @@ export function AdminDashboardPage() {
                     onSubmit={judgeForm.handleSubmit((values) => judgeMutation.mutate(values))}
                   >
                     <div className="space-y-2 md:col-span-2">
-                      <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Full Name</Label>
-                      <Input {...judgeForm.register('full_name')} className="h-11 rounded-xl border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5" />
+                      <Label>Full Name</Label>
+                      <Input {...judgeForm.register('full_name')} />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</Label>
-                      <Input type="email" {...judgeForm.register('email')} className="h-11 rounded-xl border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5" />
+                      <Label>Email</Label>
+                      <Input type="email" {...judgeForm.register('email')} />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Initial Password</Label>
-                      <Input type="password" {...judgeForm.register('password')} className="h-11 rounded-xl border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5" />
+                      <Label>Password</Label>
+                      <Input type="password" {...judgeForm.register('password')} />
                       {judgeForm.formState.errors.password && (
                         <p className="text-xs text-rose-600 dark:text-rose-300">
                           {judgeForm.formState.errors.password.message}
@@ -492,12 +525,12 @@ export function AdminDashboardPage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Division</Label>
+                      <Label>Division</Label>
                       <Select
                         value={judgeForm.watch('division')}
                         onValueChange={(value) => judgeForm.setValue('division', value as Division)}
                       >
-                        <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
+                        <SelectTrigger>
                           <SelectValue placeholder="Select division" />
                         </SelectTrigger>
                         <SelectContent>
@@ -509,7 +542,7 @@ export function AdminDashboardPage() {
                     <div className="md:col-span-2">
                       <Button
                         type="submit"
-                        className="w-full rounded-xl"
+                        className="w-full"
                         disabled={judgeMutation.isPending}
                       >
                         {judgeMutation.isPending ? 'Inviting…' : 'Invite Judge'}
@@ -519,39 +552,38 @@ export function AdminDashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+              <Card className="border p-5">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
+                  <CardTitle className="flex items-center gap-2">
                     <UserRound className="h-5 w-5 text-slate-500" />
                     Judges Roster
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="max-h-96">
-                    <table className="min-w-full divide-y divide-slate-200 overflow-hidden rounded-xl text-sm shadow-sm dark:divide-white/10">
-                      <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                    <table className="min-w-full divide-y text-sm">
+                      <thead className="bg-slate-50 text-left text-xs uppercase text-slate-600 dark:bg-slate-900 dark:text-slate-400">
                         <tr>
-                          <th className="px-3 py-2">Name</th>
-                          <th className="px-3 py-2">Email</th>
-                          <th className="px-3 py-2">Division</th>
-                          <th className="px-3 py-2 text-right">Actions</th>
+                          <th className="px-4 py-3">Name</th>
+                          <th className="px-4 py-3">Email</th>
+                          <th className="px-4 py-3">Division</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/30">
-                        {judgesQuery.data?.map((judgeRow, idx) => {
-                          const isEditing = editingJudgeId === judgeRow.id;
-                          const currentValues =
-                            isEditing && editingValues
-                              ? editingValues
-                              : {
-                                  full_name: judgeRow.full_name,
-                                  email: judgeRow.email ?? '',
-                                  division: judgeRow.division as Division
-                                };
-                          const zebra = idx % 2 === 0 ? 'bg-white/70 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/50';
-                          return (
-                            <tr key={judgeRow.id} className={`${zebra} transition hover:bg-slate-100 dark:hover:bg-white/10`}>
-                              <td className="px-3 py-3 text-slate-900 dark:text-white">
+                      <tbody className="divide-y bg-white dark:bg-slate-950">
+                         {judgesQuery.data?.map((judgeRow, idx) => {
+                           const isEditing = editingJudgeId === judgeRow.id;
+                           const currentValues =
+                             isEditing && editingValues
+                               ? editingValues
+                               : {
+                                   full_name: judgeRow.full_name,
+                                   email: judgeRow.email ?? '',
+                                   division: judgeRow.division as Division
+                                 };
+                           return (
+                             <tr key={judgeRow.id} className={idx % 2 === 0 ? 'bg-white dark:bg-slate-950' : 'bg-slate-50 dark:bg-slate-900/50'}>
+                               <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
                                 {isEditing ? (
                                   <Input
                                     value={currentValues.full_name}
@@ -566,116 +598,111 @@ export function AdminDashboardPage() {
                                             }
                                       )
                                     }
-                                    className="h-10 rounded-lg"
-                                  />
-                                ) : (
-                                  judgeRow.full_name
-                                )}
-                              </td>
-                              <td className="px-3 py-3 text-slate-600 dark:text-slate-300">
-                                {isEditing ? (
-                                  <Input
-                                    value={currentValues.email}
-                                    onChange={(e) =>
-                                      setEditingValues((prev) =>
-                                        prev
-                                          ? { ...prev, email: e.target.value }
-                                          : {
-                                              full_name: judgeRow.full_name,
-                                              email: e.target.value,
-                                              division: judgeRow.division as Division
-                                            }
-                                      )
-                                    }
-                                    className="h-10 rounded-lg"
-                                  />
-                                ) : (
-                                  judgeRow.email ?? 'No email'
-                                )}
-                              </td>
-                              <td className="px-3 py-3 capitalize">
-                                {isEditing ? (
-                                  <Select
-                                    value={currentValues.division}
-                                    onValueChange={(value) =>
-                                      setEditingValues((prev) =>
-                                        prev
-                                          ? { ...prev, division: value as Division }
-                                          : {
-                                              full_name: judgeRow.full_name,
-                                              email: judgeRow.email ?? '',
-                                              division: value as Division
-                                            }
-                                      )
-                                    }
-                                  >
-                                    <SelectTrigger className="h-10 rounded-lg">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="male">Male</SelectItem>
-                                      <SelectItem value="female">Female</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  judgeRow.division
-                                )}
-                              </td>
-                              <td className="px-3 py-3 text-right space-x-1">
-                                {isEditing ? (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="rounded-lg"
-                                      onClick={() => {
-                                        if (!editingValues) return;
-                                        updateJudgeMutation.mutate({
-                                          id: judgeRow.id,
-                                          ...editingValues
-                                        });
-                                      }}
-                                    >
-                                      Save
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="rounded-lg"
-                                      onClick={() => {
-                                        setEditingJudgeId(null);
-                                        setEditingValues(null);
-                                      }}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="rounded-lg"
-                                    onClick={() => {
-                                      setEditingJudgeId(judgeRow.id);
-                                      setEditingValues({
-                                        full_name: judgeRow.full_name,
-                                        email: judgeRow.email ?? '',
-                                        division: judgeRow.division as Division
-                                      });
-                                    }}
-                                  >
-                                    Edit
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="rounded-lg text-rose-600 hover:text-rose-700 dark:text-rose-300"
-                                  onClick={() => deleteJudgeMutation.mutate(judgeRow.id)}
-                                >
-                                  Remove
-                                </Button>
-                              </td>
+                                   />
+                                 ) : (
+                                   judgeRow.full_name
+                                 )}
+                               </td>
+                               <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                                 {isEditing ? (
+                                   <Input
+                                     value={currentValues.email}
+                                     onChange={(e) =>
+                                       setEditingValues((prev) =>
+                                         prev
+                                           ? { ...prev, email: e.target.value }
+                                           : {
+                                               full_name: judgeRow.full_name,
+                                               email: e.target.value,
+                                               division: judgeRow.division as Division
+                                             }
+                                       )
+                                     }
+                                   />
+                                 ) : (
+                                   judgeRow.email ?? 'No email'
+                                 )}
+                               </td>
+                               <td className="px-4 py-3 capitalize">
+                                 {isEditing ? (
+                                   <Select
+                                     value={currentValues.division}
+                                     onValueChange={(value) =>
+                                       setEditingValues((prev) =>
+                                         prev
+                                           ? { ...prev, division: value as Division }
+                                           : {
+                                               full_name: judgeRow.full_name,
+                                               email: judgeRow.email ?? '',
+                                               division: value as Division
+                                             }
+                                       )
+                                     }
+                                   >
+                                     <SelectTrigger>
+                                       <SelectValue />
+                                     </SelectTrigger>
+                                     <SelectContent>
+                                       <SelectItem value="male">Male</SelectItem>
+                                       <SelectItem value="female">Female</SelectItem>
+                                     </SelectContent>
+                                   </Select>
+                                 ) : (
+                                   judgeRow.division
+                                 )}
+                               </td>
+                               <td className="px-4 py-3 text-right space-x-2">
+                                 {isEditing ? (
+                                   <>
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => {
+                                         if (!editingValues) return;
+                                         updateJudgeMutation.mutate({
+                                           id: judgeRow.id,
+                                           ...editingValues
+                                         });
+                                       }}
+                                     >
+                                       Save
+                                     </Button>
+                                     <Button
+                                       variant="ghost"
+                                       size="sm"
+                                       onClick={() => {
+                                         setEditingJudgeId(null);
+                                         setEditingValues(null);
+                                       }}
+                                     >
+                                       Cancel
+                                     </Button>
+                                   </>
+                                 ) : (
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     onClick={() => {
+                                       setEditingJudgeId(judgeRow.id);
+                                       setEditingValues({
+                                         full_name: judgeRow.full_name,
+                                         email: judgeRow.email ?? '',
+                                         division: judgeRow.division as Division
+                                       });
+                                     }}
+                                   >
+                                     Edit
+                                   </Button>
+                                 )}
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   className="text-rose-600 hover:text-rose-700 dark:text-rose-300"
+                                   onClick={() => deleteJudgeMutation.mutate(judgeRow.id)}
+                                 >
+                                   Remove
+                                 </Button>
+                               </td>
                             </tr>
                           );
                         })}
@@ -689,66 +716,7 @@ export function AdminDashboardPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="leaderboard" className="space-y-6">
-              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5">
-                <Select
-                  value={divisionFilter}
-                  onValueChange={(value) => setDivisionFilter(value as Division)}
-                >
-                  <SelectTrigger className="w-40 rounded-lg border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={() => refreshMutation.mutate()}
-                  disabled={refreshMutation.isPending}
-                  className="rounded-lg"
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  {refreshMutation.isPending ? 'Refreshing…' : 'Refresh totals'}
-                </Button>
-              </div>
-              <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-0 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
-                <div className="border-b border-slate-200 px-6 py-4 dark:border-white/10">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-white">Live Leaderboard</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Totals auto-refresh every 5 seconds.</p>
-                </div>
-                <ScrollArea className="max-h-[420px]">
-                  <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-white/10">
-                    <thead className="sticky top-0 bg-white text-left text-xs uppercase tracking-wide text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-                      <tr>
-                        <th className="px-4 py-3">Rank</th>
-                        <th className="px-4 py-3">Contestant</th>
-                        <th className="px-4 py-3 text-right">Total score</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/30">
-                      {leaderboardQuery.data?.map((row, idx) => (
-                        <tr key={row.contestant_id} className={idx % 2 === 0 ? 'bg-white/70 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/40'}>
-                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{row.rank}</td>
-                          <td className="px-4 py-3 text-slate-900 dark:text-white">
-                            Candidate #{row.number?.toString().padStart(2, '0')}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono text-slate-900 dark:text-white">{row.total_score?.toFixed(3)}</td>
-                        </tr>
-                      )) ?? (
-                        <tr>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400" colSpan={3}>
-                            No records found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </ScrollArea>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="scoring-summary" className="space-y-6">
+            <TabsContent value="scoring-summary" className="space-y-6 w-full">
               <ScoringSummarySection />
             </TabsContent>
           </Tabs>
@@ -813,8 +781,8 @@ function ScoringSummarySection() {
     if (!summary) return null;
     const judgeCount = summary.judges.length;
     return (
-      <Card className="rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">
+      <Card className="border p-5 w-full">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10 mb-4">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
               {summary.categoryLabel}
@@ -826,8 +794,8 @@ function ScoringSummarySection() {
           </Badge>
         </div>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-white/10">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full divide-y divide-slate-200 text-sm dark:divide-white/10">
               <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
                 <tr>
                   <th className="px-4 py-3">Ranking</th>
@@ -953,8 +921,8 @@ function ScoringSummarySection() {
   };
 
   return (
-    <div className={printMode ? 'space-y-6 printing' : 'space-y-6'}>
-      <Card className="rounded-2xl border border-slate-200/80 bg-slate-50/70 shadow-sm dark:border-white/10 dark:bg-slate-900/40">
+    <div className={printMode ? 'space-y-6 printing w-full' : 'space-y-6 w-full'}>
+      <Card className="border p-5 w-full">
         <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Category Summary</p>

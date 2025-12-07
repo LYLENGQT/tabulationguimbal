@@ -40,7 +40,18 @@ Deno.serve(async (req) => {
       }
     })
 
-    // Get all users (we'll delete all non-admin users regardless of request body)
+    // Parse request body (optional)
+    let requestBody: { emails?: string[] } = {}
+    try {
+      const bodyText = await req.text()
+      if (bodyText) {
+        requestBody = JSON.parse(bodyText)
+      }
+    } catch (e) {
+      // Body is optional, continue without it
+    }
+
+    // Get all users
     const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers()
 
     if (listError) {
@@ -56,13 +67,20 @@ Deno.serve(async (req) => {
     const deletedUsers: string[] = []
     const failedDeletions: Array<{ email: string; error: string }> = []
     const adminEmail = 'admin@mrmsteen2025.com'
+    const emailsToDelete = requestBody.emails?.map((e: string) => e?.toLowerCase()).filter(Boolean) || []
 
-    // Delete all users except admin
-    // Since we're resetting the system, we delete all non-admin users
+    // If specific emails provided, only delete those. Otherwise, delete all non-admin users
+    const shouldDeleteAll = emailsToDelete.length === 0
+
     for (const user of usersData.users) {
       // Skip admin user
       const userEmail = user.email?.toLowerCase()
       if (userEmail === adminEmail.toLowerCase()) {
+        continue
+      }
+
+      // If specific emails provided, only delete if email matches
+      if (!shouldDeleteAll && userEmail && !emailsToDelete.includes(userEmail)) {
         continue
       }
 

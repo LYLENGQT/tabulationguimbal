@@ -28,14 +28,20 @@ When the admin resets the system, this function:
 
 ## Usage
 
-The function is called automatically by the `resetSystem()` function in `src/services/supabaseApi.ts`.
+The function is called automatically by:
+- `resetSystem()` function in `src/services/supabaseApi.ts` (deletes all non-admin users)
+- `deleteJudge()` function in `src/services/supabaseApi.ts` (deletes specific judge user)
 
-**Request Body:** (Optional - can be empty `{}`)
+**Request Body:** (Optional)
 ```json
-{}
+{
+  "emails": ["judge1@example.com", "judge2@example.com"]
+}
 ```
 
-The function will delete **all authentication users except the admin** (admin@mrmsteen2025.com), regardless of the request body. This ensures all judge accounts are deleted during system reset.
+**Behavior:**
+- If `emails` array is provided: Only deletes those specific email addresses (except admin)
+- If `emails` array is empty or not provided: Deletes **all authentication users except the admin** (admin@mrmsteen2025.com)
 
 **Response:**
 ```json
@@ -48,6 +54,12 @@ The function will delete **all authentication users except the admin** (admin@mr
 ```
 
 ## Security
+
+- Uses service role key (automatically available in Edge Functions environment)
+- Never exposes sensitive keys to client-side code
+- Skips admin user deletion to preserve admin access
+
+
 
 - Uses service role key (automatically available in Edge Functions environment)
 - Never exposes sensitive keys to client-side code

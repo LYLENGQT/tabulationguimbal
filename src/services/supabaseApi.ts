@@ -141,8 +141,36 @@ export const updateJudge = async (
 };
 
 export const deleteJudge = async (id: string) => {
+  // First, fetch the judge's email before deleting
+  const { data: judge, error: fetchError } = await supabase
+    .from('judges')
+    .select('email')
+    .eq('id', id)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  // Delete from judges table
   const { error } = await supabase.from('judges').delete().eq('id', id);
   if (error) throw error;
+
+  // Delete authentication user via Edge Function
+  if (judge?.email) {
+    try {
+      const { error: functionError } = await supabase.functions.invoke('delete-auth-users', {
+        body: { emails: [judge.email] }
+      });
+
+      if (functionError) {
+        console.error('Failed to delete auth user:', functionError);
+        // Don't throw - judge record is already deleted, but log the error
+      }
+    } catch (error) {
+      console.error('Error calling delete-auth-users function:', error);
+      // Don't throw - judge record is already deleted
+    }
+  }
+
   return true;
 };
 

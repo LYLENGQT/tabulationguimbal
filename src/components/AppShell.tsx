@@ -45,7 +45,7 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-50">
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/70">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link to={showAdminLink ? '/admin' : '/judge'} className="group flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-sm shadow-slate-900/10 dark:from-white dark:to-slate-200 dark:text-slate-900">
               <Crown className="h-5 w-5" />
@@ -104,7 +104,7 @@ export function AppShell({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="relative mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8"
+          className="relative mx-auto w-full px-4 py-6 sm:px-6 lg:px-8"
         >
           {children}
         </motion.main>

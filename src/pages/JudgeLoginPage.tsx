@@ -48,7 +48,7 @@ export function JudgeLoginPage() {
       } = await supabase.auth.getUser();
       if (user) {
         const role = await supabaseAuth.getCurrentRole();
-        navigate(role === 'admin' ? '/admin' : '/judge', { replace: true });
+        navigate(role === 'admin' ? '/rankings' : '/judge', { replace: true });
       } else {
         setIsChecking(false);
       }
@@ -61,7 +61,7 @@ export function JudgeLoginPage() {
     try {
       await supabaseAuth.signInWithPassword(email, password);
       const role = await supabaseAuth.getCurrentRole();
-      navigate(role === 'admin' ? '/admin' : '/judge');
+      navigate(role === 'admin' ? '/rankings' : '/judge');
     } catch (error) {
       setMessage((error as Error).message);
     }
