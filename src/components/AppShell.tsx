@@ -97,3 +97,253 @@ export function AppShell({
 }
 
 
+
+            </p>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {filteredNav.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link key={item.href} to={item.href}>
+                  <Button
+                    variant={isActive ? 'default' : 'ghost'}
+                    className={cn(
+                      'rounded-2xl px-5',
+                      isActive
+                        ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white/90'
+                        : 'text-slate-600 dark:text-slate-300'
+                    )}
+                  >
+                    {item.label}
+                  </Button>
+                </Link>
+              );
+            })}
+            {actions}
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="rounded-2xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <motion.main
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mx-auto w-full max-w-7xl px-6 py-10"
+      >
+        {children}
+      </motion.main>
+    </div>
+  );
+}
+
+
+
+            </p>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {filteredNav.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link key={item.href} to={item.href}>
+                  <Button
+                    variant={isActive ? 'default' : 'ghost'}
+                    className={cn(
+                      'rounded-2xl px-5',
+                      isActive
+                        ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white/90'
+                        : 'text-slate-600 dark:text-slate-300'
+                    )}
+                  >
+                    {item.label}
+                  </Button>
+                </Link>
+              );
+            })}
+            {actions}
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="rounded-2xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <motion.main
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mx-auto w-full max-w-7xl px-6 py-10"
+      >
+        {children}
+      </motion.main>
+    </div>
+  );
+}
+
+
+
+            </p>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {filteredNav.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link key={item.href} to={item.href}>
+                  <Button
+                    variant={isActive ? 'default' : 'ghost'}
+                    className={cn(
+                      'rounded-2xl px-5',
+                      isActive
+                        ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white/90'
+                        : 'text-slate-600 dark:text-slate-300'
+                    )}
+                  >
+                    {item.label}
+                  </Button>
+                </Link>
+              );
+            })}
+            {actions}
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="rounded-2xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <motion.main
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mx-auto w-full max-w-7xl px-6 py-10"
+      >
+        {children}
+      </motion.main>
+    </div>
+  );
+}
+
+
+
+            </p>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {filteredNav.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link key={item.href} to={item.href}>
+                  <Button
+                    variant={isActive ? 'default' : 'ghost'}
+                    className={cn(
+                      'rounded-2xl px-5',
+                      isActive
+                        ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white/90'
+                        : 'text-slate-600 dark:text-slate-300'
+                    )}
+                  >
+                    {item.label}
+                  </Button>
+                </Link>
+              );
+            })}
+            {actions}
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="rounded-2xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <motion.main
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mx-auto w-full max-w-7xl px-6 py-10"
+      >
+        {children}
+      </motion.main>
+    </div>
+  );
+}
+
+
+
+            </p>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {filteredNav.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link key={item.href} to={item.href}>
+                  <Button
+                    variant={isActive ? 'default' : 'ghost'}
+                    className={cn(
+                      'rounded-2xl px-5',
+                      isActive
+                        ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white/90'
+                        : 'text-slate-600 dark:text-slate-300'
+                    )}
+                  >
+                    {item.label}
+                  </Button>
+                </Link>
+              );
+            })}
+            {actions}
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="rounded-2xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <motion.main
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mx-auto w-full max-w-7xl px-6 py-10"
+      >
+        {children}
+      </motion.main>
+    </div>
+  );
+}
+
+

@@ -212,17 +212,23 @@ join (
   on cat.slug = data.category_slug
 on conflict (category_id, slug) do nothing;
 
+-- Grant access to views for Supabase PostgREST
+grant select on category_rankings to anon, authenticated;
+grant select on overall_rankings to anon, authenticated;
+grant select on leaderboard to anon, authenticated;
+
+-- Grant access to materialized views
+grant select on category_averages to anon, authenticated;
+grant select on contestant_totals to anon, authenticated;
+
 -- Helper function to refresh leaderboards after new scores
 create or replace function refresh_leaderboards()
 returns void
-language plpgsql
-security definer
-set search_path = public
 as $$
 begin
-  refresh materialized view concurrently category_averages;
-  refresh materialized view concurrently contestant_totals;
+  refresh materialized view category_averages;
+  refresh materialized view contestant_totals;
 end;
-$$;
-
-
+$$ language plpgsql
+security definer
+set search_path = public;
