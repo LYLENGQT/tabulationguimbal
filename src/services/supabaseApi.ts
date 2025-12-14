@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '../lib/supabaseClient';
 import type {
+  ActivityLog,
   Category,
   CategoryRankingRow,
   Contestant,
@@ -8,6 +9,7 @@ import type {
   Judge,
   LeaderboardRow,
   OverallRankingRow,
+  ScoreHistory,
   ScorePayload
 } from '../types/scoring';
 
@@ -28,21 +30,43 @@ export const supabaseAuth = {
     email: string;
     password: string;
     full_name: string;
+    username?: string;
     division: Division;
   }) {
-    const { email, password, full_name, division } = params;
+    const { email, password, full_name, division, username } = params;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name,
-          division
+          division,
+          username
         }
       }
     });
     if (error) throw error;
     return data;
+  },
+  async signInWithUsername(username: string, password: string) {
+    // Look up judge by username to get their email
+    const { data: judge, error: lookupError } = await supabase
+      .from('judges')
+      .select('email')
+      .eq('username', username)
+      .single();
+    
+    if (lookupError || !judge) {
+      throw new Error('Invalid username or password');
+    }
+    
+    // Sign in with the email
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email: judge.email, 
+      password 
+    });
+    if (error) throw error;
+    return true;
   },
   async signOut() {
     const { error } = await supabase.auth.signOut();
@@ -70,6 +94,18 @@ export const supabaseAuth = {
       .from('judges')
       .select('*')
       .eq('email', user.user.email ?? '')
+      .single();
+    if (error) {
+      console.error(error);
+      return null;
+    }
+    return data as Judge;
+  },
+  async getJudgeByUsername(username: string): Promise<Judge | null> {
+    const { data, error } = await supabase
+      .from('judges')
+      .select('*')
+      .eq('username', username)
       .single();
     if (error) {
       console.error(error);
@@ -128,7 +164,7 @@ export const fetchJudges = async (): Promise<Judge[]> => {
 
 export const updateJudge = async (
   id: string,
-  payload: Partial<Pick<Judge, 'full_name' | 'email' | 'division' | 'is_active'>>
+  payload: Partial<Pick<Judge, 'full_name' | 'email' | 'username' | 'division'>>
 ) => {
   const { data, error } = await supabase
     .from('judges')
@@ -174,11 +210,82 @@ export const deleteJudge = async (id: string) => {
   return true;
 };
 
+export const logActivity = async (activity: {
+  user_id?: string;
+  user_type: 'judge' | 'admin';
+  user_name: string;
+  action_type: ActivityLog['action_type'];
+  entity_type?: string;
+  entity_id?: string;
+  description: string;
+  metadata?: Record<string, any>;
+}) => {
+  const { data: user } = await supabase.auth.getUser();
+  const { error } = await supabase.from('activity_log').insert({
+    ...activity,
+    user_id: activity.user_id || user.user?.id
+  });
+  if (error) {
+    console.error('Failed to log activity:', error);
+    // Don't throw - activity logging should not break the main flow
+  }
+};
+
+export const updateJudgeLastActive = async (judgeId: string) => {
+  const { error } = await supabase
+    .from('judges')
+    .update({ last_active: new Date().toISOString() })
+    .eq('id', judgeId);
+  if (error) {
+    console.error('Failed to update judge last active:', error);
+  }
+};
+
 export const upsertScores = async (payload: ScorePayload[]) => {
   const { error } = await supabase.from('scores').upsert(payload, {
     onConflict: 'judge_id,contestant_id,criterion_id'
   });
   if (error) throw error;
+
+  // Log activity for score submission
+  if (payload.length > 0) {
+    const firstScore = payload[0];
+    const { data: judge } = await supabase
+      .from('judges')
+      .select('full_name')
+      .eq('id', firstScore.judge_id)
+      .single();
+    const { data: contestant } = await supabase
+      .from('contestants')
+      .select('full_name, number')
+      .eq('id', firstScore.contestant_id)
+      .single();
+    const { data: category } = await supabase
+      .from('categories')
+      .select('label')
+      .eq('id', firstScore.category_id)
+      .single();
+
+    await logActivity({
+      user_id: firstScore.judge_id,
+      user_type: 'judge',
+      user_name: judge?.full_name || 'Unknown Judge',
+      action_type: 'score_submitted',
+      entity_type: 'score',
+      description: `Submitted scores for ${contestant?.full_name || 'Contestant'} in ${category?.label || 'Category'}`,
+      metadata: {
+        contestant_id: firstScore.contestant_id,
+        contestant_name: contestant?.full_name,
+        contestant_number: contestant?.number,
+        category_id: firstScore.category_id,
+        category_label: category?.label,
+        criteria_count: payload.length
+      }
+    });
+
+    // Update judge last active
+    await updateJudgeLastActive(firstScore.judge_id);
+  }
 
   // Keep materialized leaderboard views in sync so rankings update in near real-time.
   // This pageant has a small dataset, so refreshing on each scoring submission is acceptable.
@@ -229,6 +336,40 @@ export const lockSubmission = async (
     { onConflict: 'judge_id,category_id,contestant_id' }
   );
   if (error) throw error;
+
+  // Log activity
+  const { data: judge } = await supabase
+    .from('judges')
+    .select('full_name')
+    .eq('id', judgeId)
+    .single();
+  const { data: contestant } = await supabase
+    .from('contestants')
+    .select('full_name, number')
+    .eq('id', contestantId)
+    .single();
+  const { data: category } = await supabase
+    .from('categories')
+    .select('label')
+    .eq('id', categoryId)
+    .single();
+
+  await logActivity({
+    user_id: judgeId,
+    user_type: 'judge',
+    user_name: judge?.full_name || 'Unknown Judge',
+    action_type: 'lock_created',
+    entity_type: 'lock',
+    description: `Locked submission for ${contestant?.full_name || 'Contestant'} in ${category?.label || 'Category'}`,
+    metadata: {
+      contestant_id: contestantId,
+      contestant_name: contestant?.full_name,
+      contestant_number: contestant?.number,
+      category_id: categoryId,
+      category_label: category?.label
+    }
+  });
+
   return true;
 };
 
@@ -259,6 +400,74 @@ export const fetchLocksForCategory = async (
     .eq('category_id', categoryId);
   if (error) throw error;
   return data as { contestant_id: string }[];
+};
+
+export const fetchAllLocksForCategory = async (
+  categoryId: string
+): Promise<{ judge_id: string; contestant_id: string; judge_name: string }[]> => {
+  const { data, error } = await supabase
+    .from('judge_category_locks')
+    .select(`
+      judge_id,
+      contestant_id,
+      judges(full_name)
+    `)
+    .eq('category_id', categoryId);
+  if (error) throw error;
+  return (data as any[]).map((lock) => ({
+    judge_id: lock.judge_id,
+    contestant_id: lock.contestant_id,
+    judge_name: (lock.judges as any)?.full_name ?? 'Unknown'
+  }));
+};
+
+export const unlockSubmission = async (
+  judgeId: string,
+  categoryId: string,
+  contestantId: string
+) => {
+  const { error } = await supabase
+    .from('judge_category_locks')
+    .delete()
+    .eq('judge_id', judgeId)
+    .eq('category_id', categoryId)
+    .eq('contestant_id', contestantId);
+  if (error) throw error;
+
+  // Log activity
+  const { data: judge } = await supabase
+    .from('judges')
+    .select('full_name')
+    .eq('id', judgeId)
+    .single();
+  const { data: contestant } = await supabase
+    .from('contestants')
+    .select('full_name, number')
+    .eq('id', contestantId)
+    .single();
+  const { data: category } = await supabase
+    .from('categories')
+    .select('label')
+    .eq('id', categoryId)
+    .single();
+
+  await logActivity({
+    user_type: 'admin',
+    user_name: 'Admin',
+    action_type: 'lock_removed',
+    entity_type: 'lock',
+    description: `Unlocked submission for ${contestant?.full_name || 'Contestant'} in ${category?.label || 'Category'}`,
+    metadata: {
+      judge_id: judgeId,
+      judge_name: judge?.full_name,
+      contestant_id: contestantId,
+      contestant_name: contestant?.full_name,
+      category_id: categoryId,
+      category_label: category?.label
+    }
+  });
+
+  return true;
 };
 
 export const fetchScoresForJudgeCategory = async (
@@ -317,6 +526,7 @@ export const createContestant = async (payload: {
 export const createJudge = async (payload: {
   full_name: string;
   email: string;
+  username?: string;
   division: Division;
 }) => {
   const { data, error } = await supabase
@@ -335,11 +545,67 @@ export const refreshLeaderboard = async () => {
 };
 
 export const fetchScoresForExport = async () => {
-  const { data, error } = await supabase
+  // Fetch scores with IDs
+  const { data: scores, error: scoresError } = await supabase
     .from('scores')
-    .select('judge_id,contestant_id,category_id,criterion_id,raw_score,weighted_score,created_at');
-  if (error) throw error;
-  return data;
+    .select('judge_id, contestant_id, category_id, criterion_id, raw_score, weighted_score, created_at');
+  
+  if (scoresError) {
+    console.error('Export scores error:', scoresError);
+    throw scoresError;
+  }
+  
+  if (!scores || scores.length === 0) {
+    return [];
+  }
+  
+  // Get unique IDs
+  const judgeIds = [...new Set(scores.map((s: any) => s.judge_id))];
+  const contestantIds = [...new Set(scores.map((s: any) => s.contestant_id))];
+  const categoryIds = [...new Set(scores.map((s: any) => s.category_id))];
+  const criterionIds = [...new Set(scores.map((s: any) => s.criterion_id))];
+  
+  // Fetch all related data
+  const [judgesResult, contestantsResult, categoriesResult, criteriaResult] = await Promise.all([
+    supabase.from('judges').select('id, full_name, email').in('id', judgeIds),
+    supabase.from('contestants').select('id, full_name, number, division').in('id', contestantIds),
+    supabase.from('categories').select('id, label, slug').in('id', categoryIds),
+    supabase.from('criteria').select('id, label, slug').in('id', criterionIds)
+  ]);
+  
+  if (judgesResult.error) throw judgesResult.error;
+  if (contestantsResult.error) throw contestantsResult.error;
+  if (categoriesResult.error) throw categoriesResult.error;
+  if (criteriaResult.error) throw criteriaResult.error;
+  
+  // Create lookup maps
+  const judgesMap = new Map((judgesResult.data || []).map((j: any) => [j.id, j]));
+  const contestantsMap = new Map((contestantsResult.data || []).map((c: any) => [c.id, c]));
+  const categoriesMap = new Map((categoriesResult.data || []).map((cat: any) => [cat.id, cat]));
+  const criteriaMap = new Map((criteriaResult.data || []).map((crit: any) => [crit.id, crit]));
+  
+  // Transform scores to use names instead of IDs
+  return (scores as any[]).map((row) => {
+    const judge = judgesMap.get(row.judge_id);
+    const contestant = contestantsMap.get(row.contestant_id);
+    const category = categoriesMap.get(row.category_id);
+    const criterion = criteriaMap.get(row.criterion_id);
+    
+    return {
+      judge_name: judge?.full_name ?? 'Unknown',
+      judge_email: judge?.email ?? '',
+      contestant_name: contestant?.full_name ?? 'Unknown',
+      contestant_number: contestant?.number ?? 0,
+      contestant_division: contestant?.division ?? '',
+      category_label: category?.label ?? 'Unknown',
+      category_slug: category?.slug ?? '',
+      criterion_label: criterion?.label ?? 'Unknown',
+      criterion_slug: criterion?.slug ?? '',
+      raw_score: row.raw_score,
+      weighted_score: row.weighted_score,
+      created_at: row.created_at
+    };
+  });
 };
 
 export interface CategoryScoreSummary {
@@ -533,7 +799,50 @@ export const resetSystem = async () => {
     throw error; // Re-throw so user knows if auth deletion failed
   }
 
+  // Log system reset activity
+  const { data: user } = await supabase.auth.getUser();
+  await logActivity({
+    user_id: user.user?.id,
+    user_type: 'admin',
+    user_name: 'Admin',
+    action_type: 'system_reset',
+    description: 'System reset - all data cleared',
+    metadata: {}
+  });
+
   return true;
+};
+
+// Fetch activity log
+export const fetchActivityLog = async (limit: number = 50): Promise<ActivityLog[]> => {
+  const { data, error } = await supabase
+    .from('activity_log')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data as ActivityLog[];
+};
+
+// Fetch score history for a specific score
+export const fetchScoreHistory = async (scoreId: string): Promise<ScoreHistory[]> => {
+  const { data, error } = await supabase
+    .from('score_history')
+    .select('*')
+    .eq('score_id', scoreId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as ScoreHistory[];
+};
+
+// Fetch judges with status (last_active)
+export const fetchJudgesWithStatus = async (): Promise<(Judge & { last_active?: string })[]> => {
+  const { data, error } = await supabase
+    .from('judges')
+    .select('id, full_name, email, username, division, last_active')
+    .order('division');
+  if (error) throw error;
+  return data as (Judge & { last_active?: string })[];
 };
 
 

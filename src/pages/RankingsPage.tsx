@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Crown, Medal, Sparkles, Trophy } from 'lucide-react';
+import { Crown, Medal, Printer, Sparkles, Trophy } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
 import {
@@ -34,6 +35,7 @@ export function RankingsPage() {
     useState<CategorySlug>('production');
   const [roleChecked, setRoleChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [printMode, setPrintMode] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -80,9 +82,103 @@ export function RankingsPage() {
     CATEGORY_CONFIG.find((c) => c.slug === selectedCategorySlug)?.label ??
     'Category';
 
+  useEffect(() => {
+    if (printMode) {
+      document.body.classList.add('printing');
+    } else {
+      document.body.classList.remove('printing');
+    }
+    return () => {
+      document.body.classList.remove('printing');
+    };
+  }, [printMode]);
+
+  const handlePrint = () => {
+    setPrintMode(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        setPrintMode(false);
+      }, 300);
+    }, 300);
+  };
+
+  const formatPlacement = (placement: number, division: string) => {
+    if (placement === 1) {
+      return division.toLowerCase() === 'male' ? 'Mr Teen' : 'Ms Teen';
+    } else {
+      const runnerUpNumber = placement - 1;
+      const suffixes: Record<number, string> = {
+        1: 'st',
+        2: 'nd',
+        3: 'rd'
+      };
+      const suffix = suffixes[runnerUpNumber] || 'th';
+      return `${runnerUpNumber}${suffix} Runner Up`;
+    }
+  };
+
+  const renderPrintTable = (label: string, rows?: any[]) => {
+    if (!rows || rows.length === 0) return null;
+    const division = label.toLowerCase();
+    return (
+      <div style={{ marginBottom: '0.5cm' }}>
+        <div className="print-header" style={{ textAlign: 'center', marginBottom: '0.3cm' }}>
+          <h1 className="print-main-title" style={{ color: 'black', fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
+            Mr & Ms Teen Tabulation
+          </h1>
+          <h2 className="print-category-title" style={{ color: 'black', fontSize: '14px', fontWeight: 'bold', margin: '0.2cm 0' }}>
+            Overall Ranking - <span style={{ textTransform: 'uppercase' }}>{label}</span>
+          </h2>
+        </div>
+        <div className="print-table-container">
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              border: '1px solid #000',
+              color: 'black',
+              backgroundColor: 'white',
+              fontSize: '12px'
+            }}
+          >
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', fontWeight: 'bold' }}>
+                  Place
+                </th>
+                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', fontWeight: 'bold' }}>
+                  Contestant
+                </th>
+                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', fontWeight: 'bold' }}>
+                  Total Points
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.contestant_id}>
+                  <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center' }}>
+                    {formatPlacement(row.final_placement, division)}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center' }}>
+                    Candidate #{row.number}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center', fontWeight: 'bold' }}>
+                    {row.total_points?.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   if (!roleChecked) {
     return (
-      <AppShell title="Live Rankings" showAdminLink={false}>
+      <AppShell title="Live Rankings" showAdminLink={false} fullWidth={true}>
         <p className="text-sm text-slate-400 px-6 py-8">Loading access…</p>
       </AppShell>
     );
@@ -95,6 +191,7 @@ export function RankingsPage() {
     <AppShell
       title="Live Rankings"
       showAdminLink={isAdmin}
+      fullWidth={true}
       actions={
         <Link to={backHref}>
           <Button variant="outline" size="sm" className="rounded-xl">
@@ -146,7 +243,7 @@ export function RankingsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+        <section className={printMode ? 'space-y-6 printing' : 'rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80'}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Overall Ranking (Ranking Method)</h2>
@@ -154,16 +251,37 @@ export function RankingsPage() {
                 Lowest total points wins. Rank 1 = 1 pt, Rank 2 = 2 pts, etc.
               </p>
             </div>
-            <div className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-200">
-              <Trophy className="h-4 w-4 text-amber-500" />
-              Auto-refreshing
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Print
+              </Button>
+              <div className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-200">
+                <Trophy className="h-4 w-4 text-amber-500" />
+                Auto-refreshing
+              </div>
             </div>
           </div>
-          <div className="mt-4 grid gap-6 md:grid-cols-2">
-            {[
-              { title: 'Male Division', rows: maleOverall.data },
-              { title: 'Female Division', rows: femaleOverall.data }
-            ].map(({ title, rows }) => (
+          {printMode &&
+            createPortal(
+              <div className="print-mode" style={{ padding: '0.5cm' }}>
+                {renderPrintTable('male', maleOverall.data)}
+                {renderPrintTable('female', femaleOverall.data)}
+              </div>,
+              document.body
+            )}
+
+          {!printMode && (
+            <div className="mt-4 grid gap-6 md:grid-cols-2">
+              {[
+                { title: 'Male Division', rows: maleOverall.data },
+                { title: 'Female Division', rows: femaleOverall.data }
+              ].map(({ title, rows }) => (
               <div
                 key={title}
                 className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-950/40"
@@ -211,8 +329,9 @@ export function RankingsPage() {
                   </table>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">

@@ -48,6 +48,7 @@ export interface Judge {
   id: string;
   full_name: string;
   email?: string;
+  username?: string;
   division: Division;
 }
 
@@ -96,6 +97,35 @@ export interface OverallRankingRow {
   division: Division;
   total_points: number;
   final_placement: number;
+}
+
+export interface ActivityLog {
+  id: string;
+  user_id?: string;
+  user_type: 'judge' | 'admin';
+  user_name: string;
+  action_type: 'score_submitted' | 'score_updated' | 'lock_created' | 'lock_removed' | 'judge_logged_in' | 'judge_logged_out' | 'contestant_created' | 'judge_created' | 'system_reset';
+  entity_type?: string;
+  entity_id?: string;
+  description: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface ScoreHistory {
+  id: string;
+  score_id: string;
+  judge_id: string;
+  contestant_id: string;
+  category_id: string;
+  criterion_id: string;
+  old_raw_score?: number;
+  new_raw_score: number;
+  old_weighted_score?: number;
+  new_weighted_score: number;
+  changed_by?: string;
+  change_type: 'created' | 'updated' | 'deleted';
+  created_at: string;
 }
 
 

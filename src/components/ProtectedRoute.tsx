@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { getSupabaseClient } from '../lib/supabaseClient';
 
 type Props = {
@@ -8,7 +8,9 @@ type Props = {
 
 export function ProtectedRoute({ children }: Props) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const location = useLocation();
   const supabase = getSupabaseClient();
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -43,9 +45,9 @@ export function ProtectedRoute({ children }: Props) {
     );
   }
 
-  // Redirect to login if not authenticated
+  // Redirect to appropriate login page if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={isAdminRoute ? '/admin/login' : '/login'} replace />;
   }
 
   // Render protected content

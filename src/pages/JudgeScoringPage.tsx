@@ -15,8 +15,10 @@ import {
   fetchLocksForCategory,
   fetchScoresForJudgeCategory,
   lockSubmission,
-  upsertScores
+  upsertScores,
+  updateJudgeLastActive
 } from '../services/supabaseApi';
+import { useRealtimeScores } from '../hooks/useRealtimeScores';
 import { useJudgeSession } from '../hooks/useJudgeSession';
 import { useScoringStore } from '../store/useScoringStore';
 import { mapScoresToPayload } from '../utils/scoring';
@@ -28,6 +30,35 @@ export function JudgeScoringPage() {
   const judge = useScoringStore((state) => state.judge);
   const setCategories = useScoringStore((state) => state.setCategories);
   const setContestants = useScoringStore((state) => state.setContestants);
+
+  // Real-time score updates
+  useRealtimeScores();
+
+  // Update judge last active on mount and periodically (only when page is active)
+  useEffect(() => {
+    if (judge?.id) {
+      // Update immediately on mount
+      updateJudgeLastActive(judge.id);
+      
+      // Update every 30 seconds to keep status fresh
+      const interval = setInterval(() => {
+        updateJudgeLastActive(judge.id);
+      }, 30000); // Update every 30 seconds
+      
+      // Also update when page becomes visible (user switches back to tab)
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && judge?.id) {
+          updateJudgeLastActive(judge.id);
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+  }, [judge?.id]);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [sheetValues, setSheetValues] = useState<Record<string, Record<string, string>>>({});
@@ -146,7 +177,7 @@ export function JudgeScoringPage() {
   const totalLocked = useMemo(() => locksQuery.data?.length ?? 0, [locksQuery.data]);
 
   return (
-    <AppShell title="Judge Scoring Panel" showAdminLink={false}>
+    <AppShell title="Judge Scoring Panel" showAdminLink={false} fullWidth={true}>
       {judgeQuery.isLoading ? (
         <p className="text-sm text-slate-600 dark:text-slate-400">Loading judge profile…</p>
       ) : !judge ? (
