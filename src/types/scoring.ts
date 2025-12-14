@@ -114,15 +114,15 @@ export interface ActivityLog {
 
 export interface ScoreHistory {
   id: string;
-  score_id: string;
+  score_id?: string; // Nullable - set to NULL when score is deleted to preserve history
   judge_id: string;
   contestant_id: string;
   category_id: string;
   criterion_id: string;
   old_raw_score?: number;
-  new_raw_score: number;
+  new_raw_score?: number; // Nullable for DELETE operations
   old_weighted_score?: number;
-  new_weighted_score: number;
+  new_weighted_score?: number; // Nullable for DELETE operations
   changed_by?: string;
   change_type: 'created' | 'updated' | 'deleted';
   created_at: string;

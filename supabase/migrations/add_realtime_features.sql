@@ -27,15 +27,15 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_user_id ON activity_log(user_id);
 -- Create score history/audit log table
 CREATE TABLE IF NOT EXISTS score_history (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  score_id uuid REFERENCES scores(id) ON DELETE CASCADE,
+  score_id uuid REFERENCES scores(id) ON DELETE SET NULL, -- Set to NULL when score is deleted to preserve history
   judge_id uuid REFERENCES judges(id) ON DELETE CASCADE,
   contestant_id uuid REFERENCES contestants(id) ON DELETE CASCADE,
   category_id uuid REFERENCES categories(id) ON DELETE CASCADE,
   criterion_id uuid REFERENCES criteria(id) ON DELETE CASCADE,
   old_raw_score numeric,
-  new_raw_score numeric NOT NULL,
+  new_raw_score numeric, -- Made nullable to handle DELETE operations
   old_weighted_score numeric,
-  new_weighted_score numeric NOT NULL,
+  new_weighted_score numeric, -- Made nullable to handle DELETE operations
   changed_by uuid, -- user_id from auth.users
   change_type text NOT NULL CHECK (change_type IN ('created', 'updated', 'deleted')),
   created_at timestamptz NOT NULL DEFAULT now()
@@ -72,12 +72,14 @@ BEGIN
     );
     RETURN NEW;
   ELSIF TG_OP = 'DELETE' THEN
+    -- Insert history record for deleted score
+    -- Set score_id to NULL since the score is being deleted (foreign key constraint)
     INSERT INTO score_history (
       score_id, judge_id, contestant_id, category_id, criterion_id,
-      old_raw_score, old_weighted_score, changed_by, change_type
+      old_raw_score, new_raw_score, old_weighted_score, new_weighted_score, changed_by, change_type
     ) VALUES (
-      OLD.id, OLD.judge_id, OLD.contestant_id, OLD.category_id, OLD.criterion_id,
-      OLD.raw_score, OLD.weighted_score, auth.uid(), 'deleted'
+      NULL, OLD.judge_id, OLD.contestant_id, OLD.category_id, OLD.criterion_id,
+      OLD.raw_score, NULL, OLD.weighted_score, NULL, auth.uid(), 'deleted'
     );
     RETURN OLD;
   END IF;

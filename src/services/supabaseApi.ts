@@ -759,7 +759,20 @@ export const fetchCategoryScoreSummary = async (
 };
 
 export const resetSystem = async () => {
-  // Delete all database records first
+  // Delete score_history and activity_log first to avoid trigger issues during score deletion
+  const { error: historyError } = await supabase.from('score_history').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (historyError) {
+    console.warn('Failed to delete score history:', historyError);
+    // Continue anyway - this is not critical
+  }
+
+  const { error: activityError } = await supabase.from('activity_log').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (activityError) {
+    console.warn('Failed to delete activity log:', activityError);
+    // Continue anyway - this is not critical
+  }
+
+  // Delete all database records
   // Delete in order to respect foreign key constraints
   const deleteOperations = [
     supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000'), // Delete all
