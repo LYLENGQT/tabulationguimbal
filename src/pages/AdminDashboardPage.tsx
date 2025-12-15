@@ -340,7 +340,7 @@ export function AdminDashboardPage() {
 
   if (!roleChecked) {
     return (
-      <AppShell title="Admin Dashboard" showAdminLink={false}>
+      <AppShell title="Admin Dashboard" showAdminLink>
         <p className="text-sm text-slate-600 dark:text-slate-400">Verifying access…</p>
       </AppShell>
     );
@@ -348,7 +348,7 @@ export function AdminDashboardPage() {
 
   if (!isAdmin) {
     return (
-      <AppShell title="Admin Dashboard" showAdminLink={false}>
+      <AppShell title="Admin Dashboard" showAdminLink>
         <p className="text-sm text-rose-600 dark:text-rose-300">You are not authorized to view this page.</p>
       </AppShell>
     );
@@ -371,7 +371,7 @@ export function AdminDashboardPage() {
   return (
     <AppShell
       title="Admin Dashboard"
-      showAdminLink={false}
+      showAdminLink
       fullWidth={true}
       actions={
         <>
