@@ -3,10 +3,13 @@ import type { ActivityLog } from '../types/scoring';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 
 interface ActivityFeedProps {
   activities: ActivityLog[];
   maxHeight?: string;
+  onClear?: () => void;
+  clearing?: boolean;
 }
 
 const actionIcons: Record<ActivityLog['action_type'], typeof Activity> = {
@@ -33,7 +36,21 @@ const actionColors: Record<ActivityLog['action_type'], string> = {
   system_reset: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
 };
 
-export function ActivityFeed({ activities, maxHeight = '600px' }: ActivityFeedProps) {
+const formatTime = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+};
+
+const formatActionLabel = (action: ActivityLog['action_type']) =>
+  action
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+export function ActivityFeed({ activities, maxHeight = '70vh', onClear, clearing }: ActivityFeedProps) {
   if (activities.length === 0) {
     return (
       <Card>
@@ -55,39 +72,37 @@ export function ActivityFeed({ activities, maxHeight = '600px' }: ActivityFeedPr
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Activity className="h-5 w-5" />
-          Activity Feed
-          <Badge variant="outline" className="ml-auto">
-            {activities.length}
-          </Badge>
-        </CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Activity Feed
+            <Badge className="ml-auto border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+              {activities.length}
+            </Badge>
+          </CardTitle>
+          {onClear && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onClear}
+              disabled={clearing}
+              className="ml-auto rounded-lg"
+            >
+              {clearing ? 'Clearing…' : 'Clear feed'}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea style={{ maxHeight }}>
+        <ScrollArea
+          className="pr-2 max-h-[70vh] activity-scrollbar"
+          style={{ maxHeight, overflowY: 'auto' }}
+        >
           <div className="space-y-3">
             {activities.map((activity) => {
               const Icon = actionIcons[activity.action_type];
               const colorClass = actionColors[activity.action_type];
-              
-              // Format time ago
-              const formatTimeAgo = (dateString: string) => {
-                const date = new Date(dateString);
-                const now = new Date();
-                const diffMs = now.getTime() - date.getTime();
-                const diffSecs = Math.floor(diffMs / 1000);
-                const diffMins = Math.floor(diffSecs / 60);
-                const diffHours = Math.floor(diffMins / 60);
-                const diffDays = Math.floor(diffHours / 24);
-
-                if (diffSecs < 60) return 'just now';
-                if (diffMins < 60) return `${diffMins}m ago`;
-                if (diffHours < 24) return `${diffHours}h ago`;
-                if (diffDays < 7) return `${diffDays}d ago`;
-                return date.toLocaleDateString();
-              };
-              
-              const timeAgo = formatTimeAgo(activity.created_at);
+              const timeLabel = formatTime(activity.created_at);
 
               return (
                 <div
@@ -105,8 +120,8 @@ export function ActivityFeed({ activities, maxHeight = '600px' }: ActivityFeedPr
                       {activity.user_type === 'admin' && (
                         <Crown className="h-3 w-3 text-amber-500" />
                       )}
-                      <Badge variant="outline" className="text-xs">
-                        {activity.action_type.replace(/_/g, ' ')}
+                      <Badge className="text-xs border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                        {formatActionLabel(activity.action_type)}
                       </Badge>
                     </div>
                     <p className="text-sm text-slate-600 dark:text-slate-300">{activity.description}</p>
@@ -120,7 +135,7 @@ export function ActivityFeed({ activities, maxHeight = '600px' }: ActivityFeedPr
                         )}
                       </div>
                     )}
-                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{timeAgo}</p>
+                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{timeLabel}</p>
                   </div>
                 </div>
               );

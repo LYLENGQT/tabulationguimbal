@@ -111,7 +111,7 @@ export function JudgeLoginPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full lg:w-3/5"
+          className="relative w-full lg:w-3/5"
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
             <Sparkles className="h-4 w-4 text-amber-500" />
@@ -168,8 +168,13 @@ export function JudgeLoginPage() {
           initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="w-full lg:w-2/5"
+          className="relative w-full lg:w-2/5"
         >
+          <div className="pointer-events-none absolute -top-5 -right-2 z-30 flex items-center gap-2 rounded-full border border-amber-300/70 bg-slate-900 px-4 py-2 text-sm font-semibold text-amber-200 shadow-xl shadow-slate-900/30 dark:bg-white dark:text-slate-900 dark:border-amber-500/50">
+            <span className="uppercase tracking-[0.2em] font-black text-amber-300 dark:text-amber-600">codewithlyle</span>
+            <span className="h-5 w-px bg-amber-300/60 dark:bg-amber-500/50" />
+            <span className="font-semibold">Lyle Denver Lague</span>
+          </div>
           <Card className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-xl shadow-slate-900/5 backdrop-blur dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/30">
             <CardHeader className="pb-4 text-center">
               <CardTitle className="text-3xl font-semibold text-slate-900 dark:text-white">Judge Portal</CardTitle>

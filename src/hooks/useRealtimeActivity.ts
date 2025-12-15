@@ -1,24 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import type { ActivityLog } from '../types/scoring';
 
-export function useRealtimeActivity(onNewActivity?: (activity: ActivityLog) => void) {
+type UseRealtimeActivityResult = {
+  activities: ActivityLog[];
+  refresh: () => Promise<void>;
+  clearLocal: () => void;
+};
+
+export function useRealtimeActivity(onNewActivity?: (activity: ActivityLog) => void): UseRealtimeActivityResult {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const supabase = getSupabaseClient();
 
-  useEffect(() => {
-    // Fetch initial activities
-    const fetchInitial = async () => {
+  const fetchInitial = useCallback(async () => {
+    try {
       const { data, error } = await supabase
         .from('activity_log')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
-      if (!error && data) {
-        setActivities(data as ActivityLog[]);
-      }
-    };
+      if (!error && data) setActivities(data as ActivityLog[]);
+    } catch (err) {
+      console.error('Failed to fetch activity log:', err);
+    }
+  }, [supabase]);
 
+  useEffect(() => {
+    // Fetch initial activities
     fetchInitial();
 
     // Subscribe to new activities
@@ -44,7 +52,11 @@ export function useRealtimeActivity(onNewActivity?: (activity: ActivityLog) => v
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, onNewActivity]);
+  }, [supabase, onNewActivity, fetchInitial]);
 
-  return activities;
+  return {
+    activities,
+    refresh: fetchInitial,
+    clearLocal: () => setActivities([])
+  };
 }

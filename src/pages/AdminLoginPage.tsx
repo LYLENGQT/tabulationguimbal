@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
-import { ArrowRight, Lock, ShieldCheck, Crown } from 'lucide-react';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabaseAuth } from '../services/supabaseApi';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -89,17 +89,27 @@ export function AdminLoginPage() {
           transition={{ duration: 0.6 }}
           className="w-full max-w-md"
         >
-          <Card className="rounded-2xl border border-slate-200/80 bg-white/80 shadow-xl shadow-slate-900/5 backdrop-blur dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/30">
-            <CardHeader className="pb-4 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-900 dark:bg-white">
-                <Crown className="h-8 w-8 text-white dark:text-slate-900" />
-              </div>
-              <CardTitle className="text-3xl font-semibold text-slate-900 dark:text-white">Admin Portal</CardTitle>
-              <CardDescription className="text-base text-slate-600 dark:text-slate-300">
-                Sign in with your administrator credentials.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="relative">
+            <div className="pointer-events-none absolute -top-5 -right-2 z-30 flex items-center gap-2 rounded-full border border-amber-300/70 bg-slate-900 px-4 py-2 text-sm font-semibold text-amber-200 shadow-xl shadow-slate-900/30 dark:bg-white dark:text-slate-900 dark:border-amber-500/50">
+              <span className="uppercase tracking-[0.2em] font-black text-amber-300 dark:text-amber-600">codewithlyle</span>
+              <span className="h-5 w-px bg-amber-300/60 dark:bg-amber-500/50" />
+              <span className="font-semibold">Lyle Denver Lague</span>
+            </div>
+            <Card className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 shadow-xl shadow-slate-900/5 backdrop-blur dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/30">
+              <CardHeader className="pb-4 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900">
+                  <img
+                    src="/mrmsteenlogo.jpg"
+                    alt="Mr & Ms Teen Guimbal 2025 logo"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <CardTitle className="text-3xl font-semibold text-slate-900 dark:text-white">Admin Portal</CardTitle>
+                <CardDescription className="text-base text-slate-600 dark:text-slate-300">
+                  Sign in with your administrator credentials.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
               <form onSubmit={onSubmit} className="space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -159,8 +169,9 @@ export function AdminLoginPage() {
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </motion.div>
       </div>
     </div>

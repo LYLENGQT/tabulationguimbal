@@ -21,6 +21,9 @@ const NAV_ITEMS = [
   { label: 'Admin', href: '/admin', icon: Crown }
 ];
 
+const DEV_PILL_BASE =
+  'flex items-center gap-1.5 rounded-full border border-amber-300/70 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-amber-200 shadow-xl shadow-slate-900/30 dark:bg-white dark:text-slate-900 dark:border-amber-500/50';
+
 export function AppShell({
   title,
   actions,
@@ -110,16 +113,29 @@ export function AppShell({
           !fullWidth && "max-w-6xl"
         )}>
           <Link to={showAdminLink ? '/admin' : '/judge'} className="group flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-sm shadow-slate-900/10 dark:from-white dark:to-slate-200 dark:text-slate-900">
-              <Crown className="h-5 w-5" />
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-900/10 dark:border-white/10 dark:bg-slate-900">
+              <img
+                src="/mrmsteenlogo.jpg"
+                alt="Mr & Ms Teen Guimbal 2025 logo"
+                className="h-full w-full object-cover"
+              />
             </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500 transition-colors group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200">
-                Mr & Ms Teen
-              </p>
-              <h1 className="text-lg font-semibold text-slate-900 transition-colors group-hover:text-slate-700 dark:text-white">
-                {title}
-              </h1>
+            <div className="flex items-center gap-12">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500 transition-colors group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200">
+                  Mr & Ms Teen
+                </p>
+                <h1 className="text-lg font-semibold text-slate-900 transition-colors group-hover:text-slate-700 dark:text-white">
+                  {title}
+                </h1>
+              </div>
+              <div className={`hidden sm:flex ${DEV_PILL_BASE}`}>
+                <span className="uppercase tracking-[0.2em] font-black text-amber-300 dark:text-amber-600">BY</span>
+                <span className="h-4 w-px bg-amber-300/60 dark:bg-amber-500/50" />
+                <span className="uppercase tracking-[0.2em] font-black text-amber-300 dark:text-amber-600">codewithlyle</span>
+                <span className="h-4 w-px bg-amber-300/60 dark:bg-amber-500/50" />
+                <span className="font-semibold">Lyle Denver Lague</span>
+              </div>
             </div>
           </Link>
           <div className="flex items-center gap-3">

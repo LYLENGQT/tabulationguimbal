@@ -186,6 +186,11 @@ export const deleteJudge = async (id: string) => {
 
   if (fetchError) throw fetchError;
 
+  // Clean up related data first to avoid FK conflicts
+  // (even though FKs are set to cascade, explicit deletes prevent conflicts if any cascades are missing)
+  await supabase.from('judge_category_locks').delete().eq('judge_id', id);
+  await supabase.from('scores').delete().eq('judge_id', id);
+
   // Delete from judges table
   const { error } = await supabase.from('judges').delete().eq('id', id);
   if (error) throw error;
@@ -229,6 +234,13 @@ export const logActivity = async (activity: {
     console.error('Failed to log activity:', error);
     // Don't throw - activity logging should not break the main flow
   }
+};
+
+export const clearActivityLog = async () => {
+  // Supabase requires a filter for deletes; use a non-restrictive filter that keeps type integrity.
+  // Delete all rows by ensuring id IS NOT NULL (valid for uuid column).
+  const { error } = await supabase.from('activity_log').delete().not('id', 'is', null);
+  if (error) throw error;
 };
 
 export const updateJudgeLastActive = async (judgeId: string) => {

@@ -40,6 +40,7 @@ import {
   fetchJudges,
   fetchJudgesWithStatus,
   fetchScoresForExport,
+  clearActivityLog,
   resetSystem,
   supabaseAuth,
   unlockSubmission,
@@ -108,13 +109,30 @@ export function AdminDashboardPage() {
   const { showNotification } = useBrowserNotifications();
   useRealtimeScores();
 
-  const activities = useRealtimeActivity((newActivity) => {
+  const { activities, refresh: refreshActivities, clearLocal: clearLocalActivities } = useRealtimeActivity((newActivity) => {
     // Show browser notification for new activities
     if (newActivity.action_type === 'score_submitted' || newActivity.action_type === 'lock_created') {
       showNotification('New Activity', {
         body: newActivity.description,
         tag: `activity-${newActivity.id}`
       });
+    }
+  });
+
+  const clearActivityMutation = useMutation({
+    mutationFn: clearActivityLog,
+    onMutate: () => {
+      // Optimistically clear the local feed
+      clearLocalActivities();
+    },
+    onSuccess: () => {
+      // Refresh from server to ensure UI matches DB
+      refreshActivities();
+    },
+    onError: (error) => {
+      console.error('Failed to clear activity log:', error);
+      // Re-fetch to restore if delete failed
+      refreshActivities();
     }
   });
 
@@ -497,8 +515,13 @@ export function AdminDashboardPage() {
               )}
 
               {/* Activity Feed */}
-              <div className="grid gap-6 lg:grid-cols-2">
-                <ActivityFeed activities={activities} maxHeight="500px" />
+              <div className="grid gap-6">
+                <ActivityFeed
+                  activities={activities}
+                  maxHeight="70vh"
+                  onClear={() => clearActivityMutation.mutate()}
+                  clearing={clearActivityMutation.isPending}
+                />
               </div>
             </div>
           )}
