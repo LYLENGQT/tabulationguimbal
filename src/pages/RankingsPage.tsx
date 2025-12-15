@@ -200,70 +200,72 @@ export function RankingsPage() {
         </Link>
       }
     >
-      <div className="space-y-8">
-        <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-r from-white via-slate-50 to-slate-100 p-6 shadow-sm dark:border-white/10 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-950">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white shadow-sm dark:bg-white dark:text-slate-900">
-                <Sparkles className="h-4 w-4" />
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+        <section className="overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200/80 bg-gradient-to-r from-white via-slate-50 to-slate-100 p-3 sm:p-4 lg:p-6 shadow-sm dark:border-white/10 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-950">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-slate-900 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white shadow-sm dark:bg-white dark:text-slate-900">
+                <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
                 Live Rankings
               </div>
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white">
                 Real-time placements with visual highlights for the top scorers.
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
                 Totals refresh automatically. Top 3 placements are emphasized for quick visibility.
               </p>
             </div>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-              <Crown className="h-4 w-4 text-amber-500" />
-              Overall + per-category standings
+            <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border border-slate-200 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-200 flex-shrink-0">
+              <Crown className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
+              <span className="hidden sm:inline">Overall + per-category standings</span>
+              <span className="sm:hidden">All standings</span>
             </div>
           </div>
 
-          <div className="mt-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
+          <div className="mt-4 sm:mt-6">
+            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] sm:tracking-[0.25em] text-slate-500 dark:text-slate-400">
               Participating Schools
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div className="mt-2 sm:mt-3 grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border border-slate-200 bg-white/70 p-2 sm:p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
               {SCHOOL_LOGOS.map((logo) => (
                 <div
                   key={logo.name}
-                  className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10"
+                  className="flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl bg-white px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10"
                 >
                   <img
                     src={logo.src}
                     alt={logo.name}
-                    className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-white/10"
+                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-md sm:rounded-lg object-cover ring-1 ring-slate-200 dark:ring-white/10 flex-shrink-0"
                   />
-                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{logo.name}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{logo.name}</span>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className={printMode ? 'space-y-6 printing' : 'rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80'}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <section className={printMode ? 'space-y-4 sm:space-y-6 printing' : 'rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white/90 p-3 sm:p-4 lg:p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80'}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Overall Ranking (Ranking Method)</h2>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-slate-900 dark:text-white">Overall Ranking (Ranking Method)</h2>
+              <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
                 Lowest total points wins. Rank 1 = 1 pt, Rank 2 = 2 pts, etc.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePrint}
-                className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                className="h-8 sm:h-9 rounded-lg border border-slate-200 bg-white px-2 sm:px-4 text-xs sm:text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
               >
-                <Printer className="mr-2 h-4 w-4" />
-                Print
+                <Printer className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Print</span>
               </Button>
-              <div className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-200">
-                <Trophy className="h-4 w-4 text-amber-500" />
-                Auto-refreshing
+              <div className="flex items-center gap-1 sm:gap-2 rounded-full bg-slate-100 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-200">
+                <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
+                <span className="hidden sm:inline">Auto-refreshing</span>
+                <span className="sm:hidden">Live</span>
               </div>
             </div>
           </div>
@@ -277,26 +279,26 @@ export function RankingsPage() {
             )}
 
           {!printMode && (
-            <div className="mt-4 grid gap-6 md:grid-cols-2">
+            <div className="mt-3 sm:mt-4 grid gap-4 sm:gap-6 md:grid-cols-2">
               {[
                 { title: 'Male Division', rows: maleOverall.data },
                 { title: 'Female Division', rows: femaleOverall.data }
               ].map(({ title, rows }) => (
               <div
                 key={title}
-                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-950/40"
+                className="overflow-hidden rounded-lg sm:rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-950/40"
               >
-                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-white/10 dark:text-white">
+                <div className="flex items-center justify-between border-b border-slate-200 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-slate-800 dark:border-white/10 dark:text-white">
                   <span>{title}</span>
-                  <Medal className="h-4 w-4 text-amber-500" />
+                  <Medal className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200 text-xs dark:divide-white/10">
+                  <table className="min-w-full divide-y divide-slate-200 text-[10px] sm:text-xs dark:divide-white/10">
                     <thead className="sticky top-0 bg-slate-50 text-left uppercase tracking-wide text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
                       <tr>
-                        <th className="px-4 py-3">Place</th>
-                        <th className="px-4 py-3">Contestant</th>
-                        <th className="px-4 py-3 text-center">Total Points</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3">Place</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3">Contestant</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center whitespace-nowrap">Total Pts</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/30">
@@ -306,13 +308,13 @@ export function RankingsPage() {
                           const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/40';
                           return (
                             <tr key={row.contestant_id} className={`${cls} ${zebra} transition hover:bg-slate-100 dark:hover:bg-white/10`}>
-                              <td className="px-4 py-3 text-sm font-semibold">{row.final_placement}</td>
-                              <td className="px-4 py-3">
-                                <div className="font-semibold text-slate-900 dark:text-white">
-                                  #{row.number?.toString().padStart(2, '0')} {row.full_name}
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold">{row.final_placement}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3">
+                                <div className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
+                                  #{row.number?.toString().padStart(2, '0')} <span className="hidden sm:inline">{row.full_name}</span>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-center font-mono">
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 text-center font-mono text-xs sm:text-sm">
                                 {row.total_points?.toFixed(2)}
                               </td>
                             </tr>
@@ -320,7 +322,7 @@ export function RankingsPage() {
                         })
                       ) : (
                         <tr>
-                          <td className="px-4 py-3 text-xs" colSpan={3}>
+                          <td className="px-2 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs" colSpan={3}>
                             No records found.
                           </td>
                         </tr>
@@ -334,20 +336,20 @@ export function RankingsPage() {
           )}
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <section className="space-y-3 sm:space-y-4 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white/90 p-3 sm:p-4 lg:p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Per-Category Rankings</h2>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-slate-900 dark:text-white">Per-Category Rankings</h2>
+              <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
                 Scores are ranked within each category and division. Top 3 are highlighted.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-1 sm:pb-0">
               {CATEGORY_CONFIG.map((cat) => (
                 <button
                   key={cat.slug}
                   onClick={() => setSelectedCategorySlug(cat.slug)}
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                  className={`rounded-full border px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold transition whitespace-nowrap flex-shrink-0 ${
                     selectedCategorySlug === cat.slug
                       ? 'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-white dark:bg-white dark:text-slate-900'
                       : 'border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-white/10 dark:text-slate-200 dark:hover:border-white/40'
@@ -359,26 +361,26 @@ export function RankingsPage() {
             </div>
           </div>
 
-          <div className="mt-2 grid gap-6 md:grid-cols-2">
+          <div className="mt-2 grid gap-4 sm:gap-6 md:grid-cols-2">
             {[
               { title: `Male – ${categoryLabel}`, rows: maleCategory.data },
               { title: `Female – ${categoryLabel}`, rows: femaleCategory.data }
             ].map(({ title, rows }) => (
               <div
                 key={title}
-                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-950/40"
+                className="overflow-hidden rounded-lg sm:rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-950/40"
               >
-                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-white/10 dark:text-white">
-                  <span>{title}</span>
-                  <Medal className="h-4 w-4 text-emerald-500" />
+                <div className="flex items-center justify-between border-b border-slate-200 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-slate-800 dark:border-white/10 dark:text-white">
+                  <span className="truncate">{title}</span>
+                  <Medal className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500 flex-shrink-0 ml-2" />
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200 text-xs dark:divide-white/10">
+                  <table className="min-w-full divide-y divide-slate-200 text-[10px] sm:text-xs dark:divide-white/10">
                     <thead className="sticky top-0 bg-slate-50 text-left uppercase tracking-wide text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
                       <tr>
-                        <th className="px-4 py-3">Rank</th>
-                        <th className="px-4 py-3">Contestant</th>
-                        <th className="px-4 py-3 text-center">Category Score</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3">Rank</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3">Contestant</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center whitespace-nowrap">Cat. Score</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/30">
@@ -388,13 +390,13 @@ export function RankingsPage() {
                           const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/40';
                           return (
                             <tr key={row.contestant_id} className={`${cls} ${zebra} transition hover:bg-slate-100 dark:hover:bg-white/10`}>
-                              <td className="px-4 py-3 text-sm font-semibold">{row.rank}</td>
-                              <td className="px-4 py-3">
-                                <div className="font-semibold text-slate-900 dark:text-white">
-                                  #{row.number?.toString().padStart(2, '0')} {row.full_name}
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold">{row.rank}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3">
+                                <div className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
+                                  #{row.number?.toString().padStart(2, '0')} <span className="hidden sm:inline">{row.full_name}</span>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-center font-mono">
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 text-center font-mono text-xs sm:text-sm">
                                 {row.category_score?.toFixed(3)}
                               </td>
                             </tr>
@@ -402,7 +404,7 @@ export function RankingsPage() {
                         })
                       ) : (
                         <tr>
-                          <td className="px-4 py-3 text-xs" colSpan={3}>
+                          <td className="px-2 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs" colSpan={3}>
                             No records found.
                           </td>
                         </tr>

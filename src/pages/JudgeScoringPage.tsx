@@ -185,73 +185,73 @@ export function JudgeScoringPage() {
           No judge profile was found for this account. Please contact the administrative team.
         </p>
       ) : (
-        <div className="space-y-8">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">
+        <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+            <Card className="rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white/90 p-3 sm:p-4 lg:p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+              <div className="flex items-start justify-between gap-3 sm:gap-4">
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-slate-500 dark:text-slate-400">
                     Current Judge
                   </p>
-                  <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
+                  <h2 className="mt-1 sm:mt-2 text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-900 dark:text-white truncate">
                     {judge.full_name}
                   </h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-300 capitalize">
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 capitalize">
                     {judge.division} division
                   </p>
                 </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-sm dark:from-white dark:to-slate-200 dark:text-slate-900">
-                  <Crown className="h-5 w-5" />
+                <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-sm dark:from-white dark:to-slate-200 dark:text-slate-900 flex-shrink-0">
+                  <Crown className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
               </div>
-              <div className="mt-6 grid grid-cols-3 gap-4 text-center text-sm">
-                <div className="rounded-xl bg-slate-100/70 p-3 dark:bg-white/5">
-                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+              <div className="mt-4 sm:mt-6 grid grid-cols-3 gap-2 sm:gap-4 text-center text-xs sm:text-sm">
+                <div className="rounded-lg sm:rounded-xl bg-slate-100/70 p-2 sm:p-3 dark:bg-white/5">
+                  <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white">
                     {contestants.length}
                   </p>
-                  <p className="text-slate-600 dark:text-slate-400">Contestants</p>
+                  <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">Contestants</p>
                 </div>
-                <div className="rounded-xl bg-slate-100/70 p-3 dark:bg-white/5">
-                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+                <div className="rounded-lg sm:rounded-xl bg-slate-100/70 p-2 sm:p-3 dark:bg-white/5">
+                  <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white">
                     {categories.length}
                   </p>
-                  <p className="text-slate-600 dark:text-slate-400">Categories</p>
+                  <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">Categories</p>
                 </div>
-                <div className="rounded-xl bg-slate-100/70 p-3 dark:bg-white/5">
-                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+                <div className="rounded-lg sm:rounded-xl bg-slate-100/70 p-2 sm:p-3 dark:bg-white/5">
+                  <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white">
                     {totalLocked}
                   </p>
-                  <p className="text-slate-600 dark:text-slate-400">Locked Rows</p>
+                  <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">Locked</p>
                 </div>
               </div>
             </Card>
-            <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
-              <p className="text-xs uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">
+            <Card className="rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white/90 p-3 sm:p-4 lg:p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-slate-500 dark:text-slate-400">
                 Instructions
               </p>
-              <div className="mt-4 space-y-3 text-sm text-slate-700 dark:text-slate-200">
+              <div className="mt-3 sm:mt-4 space-y-2 sm:space-y-3 text-xs sm:text-sm text-slate-700 dark:text-slate-200">
                 {[
                   'Enter points exactly as indicated per criterion.',
                   'Scores save per contestant row; saving locks the row.',
                   'Contact the admin if any row needs to be reopened.'
                 ].map((item) => (
-                  <div key={item} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 shadow-sm dark:border-white/10 dark:bg-white/5">
-                    <Info className="mt-0.5 h-4 w-4 text-slate-500 dark:text-slate-300" />
-                    <p>{item}</p>
+                  <div key={item} className="flex items-start gap-2 sm:gap-3 rounded-lg sm:rounded-xl border border-slate-200 bg-white/70 px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm dark:border-white/10 dark:bg-white/5">
+                    <Info className="mt-0.5 h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-slate-300 flex-shrink-0" />
+                    <p className="text-[11px] sm:text-sm">{item}</p>
                   </div>
                 ))}
               </div>
             </Card>
           </div>
 
-          <Card className="rounded-2xl border border-slate-200/80 bg-white/90 p-0 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
-            <div className="border-b border-slate-200 px-6 py-4 dark:border-white/10">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+          <Card className="rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white/90 p-0 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+            <div className="border-b border-slate-200 px-3 sm:px-6 py-3 sm:py-4 dark:border-white/10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
+                  <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-slate-500 dark:text-slate-400">
                     Categories
                   </p>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  <h3 className="text-sm sm:text-lg font-semibold text-slate-900 dark:text-white">
                     {currentCategory?.label ?? 'Choose a category'}
                   </h3>
                 </div>
@@ -259,13 +259,13 @@ export function JudgeScoringPage() {
                   value={selectedCategoryId ?? ''}
                   onValueChange={(val) => setSelectedCategoryId(val)}
                 >
-                  <ScrollArea className="max-w-full">
-                    <TabsList className="inline-flex gap-2 rounded-full bg-slate-100 p-1 dark:bg-white/5">
+                  <ScrollArea className="max-w-full -mx-3 px-3 sm:mx-0 sm:px-0">
+                    <TabsList className="inline-flex gap-1 sm:gap-2 rounded-full bg-slate-100 p-0.5 sm:p-1 dark:bg-white/5">
                       {categories.map((category) => (
                         <TabsTrigger
                           key={category.id}
                           value={category.id}
-                          className="rounded-full px-4 py-2 text-xs font-medium text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:text-slate-300 dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900"
+                          className="rounded-full px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:text-slate-300 dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900 whitespace-nowrap"
                         >
                           {category.label}
                         </TabsTrigger>
@@ -276,31 +276,31 @@ export function JudgeScoringPage() {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
               {!selectedCategoryId ? (
-                <p className="text-sm text-slate-600 dark:text-slate-400">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                   Select a category to start judging.
                 </p>
               ) : contestants.length === 0 ? (
-                <p className="text-sm text-slate-600 dark:text-slate-400">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                   Contestants for this division are not yet available.
                 </p>
               ) : (
-                <ScrollArea className="max-h-[620px] overflow-auto rounded-xl border border-slate-200/80 shadow-sm dark:border-white/10">
-                  <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-white/10">
-                    <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+                <ScrollArea className="max-h-[500px] sm:max-h-[620px] overflow-auto rounded-lg sm:rounded-xl border border-slate-200/80 shadow-sm dark:border-white/10 -mx-3 sm:mx-0">
+                  <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm dark:divide-white/10">
+                    <thead className="sticky top-0 bg-slate-50 text-left text-[10px] sm:text-xs uppercase tracking-wide text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
                       <tr>
-                        <th className="px-3 py-3">Contestant</th>
+                        <th className="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap">Contestant</th>
                         {criteria.map((criterion) => (
-                          <th key={criterion.id} className="px-3 py-3 text-center">
-                            <div className="font-medium">{criterion.label}</div>
-                            <div className="mt-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          <th key={criterion.id} className="px-1.5 sm:px-3 py-2 sm:py-3 text-center">
+                            <div className="font-medium truncate max-w-[60px] sm:max-w-none">{criterion.label}</div>
+                            <div className="mt-0.5 sm:mt-1 text-[9px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300">
                               {Math.round(criterion.percentage * 100)}%
                             </div>
                           </th>
                         ))}
-                        <th className="px-3 py-3 text-center">Total</th>
-                        <th className="px-3 py-3 text-center">Action</th>
+                        <th className="px-2 sm:px-3 py-2 sm:py-3 text-center whitespace-nowrap">Total</th>
+                        <th className="px-2 sm:px-3 py-2 sm:py-3 text-center whitespace-nowrap">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/40">
@@ -318,13 +318,13 @@ export function JudgeScoringPage() {
                             animate={{ opacity: 1, y: 0 }}
                             className={`${zebra} transition hover:bg-slate-100 dark:hover:bg-white/10`}
                           >
-                            <td className="px-3 py-3">
-                              <div className="font-semibold text-slate-900 dark:text-white">
+                            <td className="px-2 sm:px-3 py-2 sm:py-3">
+                              <div className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white whitespace-nowrap">
                                 #{contestant.number.toString().padStart(2, '0')}{' '}
-                                {contestant.full_name}
+                                <span className="hidden sm:inline">{contestant.full_name}</span>
                               </div>
-                              <p className="text-xs text-slate-600 dark:text-slate-500">
-                                {contestant.division} division
+                              <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-500 capitalize">
+                                {contestant.division}
                               </p>
                             </td>
                             {criteria.map((criterion) => {
@@ -332,13 +332,13 @@ export function JudgeScoringPage() {
                                 sheetValues[contestant.id]?.[criterion.id] ?? '';
                               const max = Math.round(criterion.percentage * 100);
                               return (
-                                <td key={criterion.id} className="px-2 py-2 text-center">
+                                <td key={criterion.id} className="px-1 sm:px-2 py-1.5 sm:py-2 text-center">
                                   <input
                                     type="number"
                                     min={0}
                                     max={max}
                                     step={0.1}
-                                    className="h-10 w-24 rounded-lg border border-slate-200 bg-white px-2 text-center text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/30 dark:focus:ring-white/10"
+                                    className="h-8 sm:h-10 w-14 sm:w-24 rounded-md sm:rounded-lg border border-slate-200 bg-white px-1 sm:px-2 text-center text-xs sm:text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/30 dark:focus:ring-white/10"
                                     disabled={isLockedForContestant}
                                     value={value}
                                     onChange={(e) => {
@@ -359,7 +359,7 @@ export function JudgeScoringPage() {
                                 </td>
                               );
                             })}
-                            <td className="px-3 py-3 text-center">
+                            <td className="px-2 sm:px-3 py-2 sm:py-3 text-center">
                               {(() => {
                                 const rowValues = sheetValues[contestant.id] ?? {};
                                 const total = criteria.reduce((sum, criterion) => {
@@ -370,7 +370,7 @@ export function JudgeScoringPage() {
                                   return sum + n;
                                 }, 0);
                                 return isLockedForContestant ? (
-                                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                                  <span className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
                                     {total.toFixed(1)}
                                   </span>
                                 ) : (
@@ -378,16 +378,16 @@ export function JudgeScoringPage() {
                                 );
                               })()}
                             </td>
-                            <td className="px-3 py-3 text-center">
+                            <td className="px-2 sm:px-3 py-2 sm:py-3 text-center">
                               {isLockedForContestant ? (
-                                <Badge variant="success" className="rounded-full bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-100">
-                                  <Lock className="mr-1 h-3.5 w-3.5" />
-                                  Locked
+                                <Badge variant="success" className="rounded-full bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-100 text-[10px] sm:text-xs">
+                                  <Lock className="mr-0.5 sm:mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                  <span className="hidden sm:inline">Locked</span>
                                 </Badge>
                               ) : (
                                 <Button
                                   size="sm"
-                                  className="rounded-full px-4 text-xs shadow-sm"
+                                  className="rounded-full px-2 sm:px-4 text-[10px] sm:text-xs shadow-sm h-7 sm:h-8"
                                   disabled={submitMutation.isPending}
                                   onClick={async () => {
                                     const rowValues = sheetValues[contestant.id] ?? {};
@@ -407,8 +407,8 @@ export function JudgeScoringPage() {
                                     });
                                   }}
                                 >
-                                  <Save className="mr-1.5 h-3.5 w-3.5" />
-                                  Save
+                                  <Save className="h-3 w-3 sm:h-3.5 sm:w-3.5 sm:mr-1.5" />
+                                  <span className="hidden sm:inline">Save</span>
                                 </Button>
                               )}
                             </td>

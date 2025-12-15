@@ -54,14 +54,14 @@ export function ActivityFeed({ activities, maxHeight = '70vh', onClear, clearing
   if (activities.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+        <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+          <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+            <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
             Activity Feed
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">
+        <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center py-4 sm:py-8">
             No activities yet. Activity will appear here as judges submit scores.
           </p>
         </CardContent>
@@ -71,12 +71,13 @@ export function ActivityFeed({ activities, maxHeight = '70vh', onClear, clearing
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-2">
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Activity Feed
-            <Badge className="ml-auto border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+          <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+            <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">Activity Feed</span>
+            <span className="sm:hidden">Activity</span>
+            <Badge className="ml-1 sm:ml-auto border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 text-[10px] sm:text-xs">
               {activities.length}
             </Badge>
           </CardTitle>
@@ -86,19 +87,19 @@ export function ActivityFeed({ activities, maxHeight = '70vh', onClear, clearing
               variant="outline"
               onClick={onClear}
               disabled={clearing}
-              className="ml-auto rounded-lg"
+              className="ml-auto rounded-lg text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3"
             >
-              {clearing ? 'Clearing…' : 'Clear feed'}
+              {clearing ? 'Clearing…' : 'Clear'}
             </Button>
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
         <ScrollArea
-          className="pr-2 max-h-[70vh] activity-scrollbar"
+          className="pr-1 sm:pr-2 max-h-[50vh] sm:max-h-[70vh] activity-scrollbar"
           style={{ maxHeight, overflowY: 'auto' }}
         >
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {activities.map((activity) => {
               const Icon = actionIcons[activity.action_type];
               const colorClass = actionColors[activity.action_type];
@@ -107,35 +108,35 @@ export function ActivityFeed({ activities, maxHeight = '70vh', onClear, clearing
               return (
                 <div
                   key={activity.id}
-                  className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+                  className="flex items-start gap-2 sm:gap-3 rounded-lg border border-slate-200 bg-white p-2 sm:p-3 dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-full ${colorClass}`}>
-                    <Icon className="h-4 w-4" />
+                  <div className={`flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full flex-shrink-0 ${colorClass}`}>
+                    <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-slate-900 dark:text-white">
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                      <span className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white truncate max-w-[100px] sm:max-w-none">
                         {activity.user_name}
                       </span>
                       {activity.user_type === 'admin' && (
-                        <Crown className="h-3 w-3 text-amber-500" />
+                        <Crown className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-amber-500 flex-shrink-0" />
                       )}
-                      <Badge className="text-xs border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                      <Badge className="text-[8px] sm:text-xs border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 px-1 sm:px-1.5">
                         {formatActionLabel(activity.action_type)}
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-300">{activity.description}</p>
+                    <p className="text-[10px] sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{activity.description}</p>
                     {activity.metadata && Object.keys(activity.metadata).length > 0 && (
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="mt-0.5 sm:mt-1 text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">
                         {activity.metadata.contestant_name && (
                           <span>Contestant: {activity.metadata.contestant_name}</span>
                         )}
                         {activity.metadata.category_label && (
-                          <span className="ml-2">Category: {activity.metadata.category_label}</span>
+                          <span className="ml-1 sm:ml-2">Cat: {activity.metadata.category_label}</span>
                         )}
                       </div>
                     )}
-                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{timeLabel}</p>
+                    <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-xs text-slate-400 dark:text-slate-500">{timeLabel}</p>
                   </div>
                 </div>
               );
