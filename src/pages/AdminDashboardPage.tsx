@@ -203,8 +203,10 @@ export function AdminDashboardPage() {
         );
       }
       
-      // Generate email from username
-      const email = `${values.username}@judge.mrmsteen2025.com`;
+      // Generate email from username (always lowercase for consistency)
+      const email = `${values.username.toLowerCase()}@judge.mrmsteen2025.com`;
+      
+      // First create the auth user
       await supabaseAuth.signUpWithPassword({
         email,
         password: values.password,
@@ -212,12 +214,30 @@ export function AdminDashboardPage() {
         username: values.username,
         division: values.division
       });
-      await createJudge({
-        full_name: values.full_name,
-        email,
-        username: values.username,
-        division: values.division
-      });
+      
+      // Then create the judge record - if this fails, we need to rollback the auth user
+      try {
+        await createJudge({
+          full_name: values.full_name,
+          email,
+          username: values.username,
+          division: values.division
+        });
+      } catch (judgeError) {
+        // Attempt to rollback by deleting the auth user
+        console.error('Failed to create judge record, attempting rollback...', judgeError);
+        try {
+          await supabaseAuth.deleteAuthUser(email);
+        } catch (rollbackError) {
+          console.error('Rollback failed:', rollbackError);
+        }
+        // Re-throw the original error with more context
+        throw new Error(
+          `Failed to create judge profile: ${(judgeError as Error).message}. ` +
+          `This may be due to a missing database column. ` +
+          `Please ensure the username migration has been applied.`
+        );
+      }
     },
     onSuccess: () => {
       judgeForm.reset();

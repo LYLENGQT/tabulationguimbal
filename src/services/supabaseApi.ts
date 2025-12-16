@@ -49,20 +49,20 @@ export const supabaseAuth = {
     return data;
   },
   async signInWithUsername(username: string, password: string) {
-    // Look up judge by username to get their email
+    // Look up judge by username to get their email (case-insensitive)
     const { data: judge, error: lookupError } = await supabase
       .from('judges')
       .select('email')
-      .eq('username', username)
+      .ilike('username', username)
       .single();
     
     if (lookupError || !judge) {
       throw new Error('Invalid username or password');
     }
     
-    // Sign in with the email
+    // Sign in with the email (lowercase to match Supabase Auth normalization)
     const { error } = await supabase.auth.signInWithPassword({ 
-      email: judge.email, 
+      email: judge.email.toLowerCase(), 
       password 
     });
     if (error) throw error;
@@ -90,10 +90,11 @@ export const supabaseAuth = {
   async getUserJudge(): Promise<Judge | null> {
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user) return null;
+    // Use ilike for case-insensitive email matching
     const { data, error } = await supabase
       .from('judges')
       .select('*')
-      .eq('email', user.user.email ?? '')
+      .ilike('email', user.user.email ?? '')
       .single();
     if (error) {
       console.error(error);
@@ -112,6 +113,17 @@ export const supabaseAuth = {
       return null;
     }
     return data as Judge;
+  },
+  async deleteAuthUser(email: string): Promise<boolean> {
+    // Delete authentication user via Edge Function
+    const { error } = await supabase.functions.invoke('delete-auth-users', {
+      body: { emails: [email] }
+    });
+    if (error) {
+      console.error('Failed to delete auth user:', error);
+      throw error;
+    }
+    return true;
   }
 };
 

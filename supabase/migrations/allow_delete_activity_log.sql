@@ -14,3 +14,4 @@ CREATE POLICY "Allow admin to delete activity log"
   USING (lower(auth.email()) = 'admin@mrmsteen2025.com');
 
 
+
