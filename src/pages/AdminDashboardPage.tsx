@@ -1202,6 +1202,70 @@ function ScoringSummarySection() {
       return contestant !== undefined;
     });
 
+    // Calculate per-judge ranks for each contestant
+    const judgeRanks = new Map<string, Map<string, number>>(); // judgeId -> contestantId -> rank
+    
+    summary.judges.forEach((judge) => {
+      const contestantsWithScores = summary.contestants
+        .map((c) => {
+          const judgeScore = c.judgeScores.find((js) => js.judgeId === judge.id);
+          return {
+            contestantId: c.contestantId,
+            score: judgeScore?.totalScore ?? null
+          };
+        })
+        .filter((c) => c.score !== null)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      
+      const rankMap = new Map<string, number>();
+      let i = 0;
+      while (i < contestantsWithScores.length) {
+        const currentScore = contestantsWithScores[i].score;
+        let tieCount = 1;
+        while (i + tieCount < contestantsWithScores.length && contestantsWithScores[i + tieCount].score === currentScore) {
+          tieCount++;
+        }
+        const avgRank = tieCount === 1 ? i + 1 : (2 * i + tieCount + 1) / 2;
+        for (let j = 0; j < tieCount; j++) {
+          rankMap.set(contestantsWithScores[i + j].contestantId, avgRank);
+        }
+        i += tieCount;
+      }
+      judgeRanks.set(judge.id, rankMap);
+    });
+    
+    // Calculate total rank points and sort contestants
+    const contestantsWithRankPoints = summary.contestants.map((contestant) => {
+      let totalRankPoints = 0;
+      summary.judges.forEach((judge) => {
+        const rank = judgeRanks.get(judge.id)?.get(contestant.contestantId);
+        if (rank !== undefined) {
+          totalRankPoints += rank;
+        }
+      });
+      return { ...contestant, totalRankPoints };
+    }).sort((a, b) => a.totalRankPoints - b.totalRankPoints);
+    
+    // Assign final placement with tie handling
+    const contestantsWithPlacement: Array<typeof contestantsWithRankPoints[0] & { finalPlacement: number }> = [];
+    let idx = 0;
+    while (idx < contestantsWithRankPoints.length) {
+      const currentPoints = contestantsWithRankPoints[idx].totalRankPoints;
+      let tieCount = 1;
+      while (idx + tieCount < contestantsWithRankPoints.length && 
+             contestantsWithRankPoints[idx + tieCount].totalRankPoints === currentPoints) {
+        tieCount++;
+      }
+      const avgPlacement = tieCount === 1 ? idx + 1 : (2 * idx + tieCount + 1) / 2;
+      for (let j = 0; j < tieCount; j++) {
+        contestantsWithPlacement.push({
+          ...contestantsWithRankPoints[idx + j],
+          finalPlacement: avgPlacement
+        });
+      }
+      idx += tieCount;
+    }
+
     return (
       <Card className="border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 border-b border-slate-200 px-3 sm:px-6 py-3 sm:py-4 dark:border-slate-800">
@@ -1217,6 +1281,9 @@ function ScoringSummarySection() {
                 {label}
               </Badge>
             </div>
+            <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400">
+              Per-judge ranks shown • Lower total = Better placement
+            </p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             {divisionLocks.length > 0 && (
@@ -1235,7 +1302,7 @@ function ScoringSummarySection() {
             <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm dark:divide-slate-800">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap">Rank</th>
+                  <th className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap">Place</th>
                   <th className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap">Cand #</th>
                   {summary.judges.map((judge) => (
                     <th key={judge.id} className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap max-w-[80px] sm:max-w-none truncate">
@@ -1243,55 +1310,63 @@ function ScoringSummarySection() {
                       <span className="sm:hidden">{judge.name.split(' ')[0]}</span>
                     </th>
                   ))}
-                  <th className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap">Avg</th>
+                  <th className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap">Total Pts</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                {summary.contestants.map((contestant, idx) => {
-                  const isTopThree = contestant.rank <= 3;
+                {contestantsWithPlacement.map((contestant, idx) => {
+                  const isTopThree = contestant.finalPlacement <= 3;
                   const rankColors: Record<number, string> = {
                     1: 'bg-amber-50 border-l-4 border-amber-400 dark:bg-amber-950/20 dark:border-amber-500',
                     2: 'bg-slate-50 border-l-4 border-slate-400 dark:bg-slate-800/50 dark:border-slate-500',
                     3: 'bg-orange-50 border-l-4 border-orange-400 dark:bg-orange-950/20 dark:border-orange-500'
                   };
+                  const baseRank = Math.floor(contestant.finalPlacement);
                   const zebra = idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50';
                   
                   // Get locks for this contestant
                   const contestantLocks = locks.filter(
                     (lock) => lock.contestant_id === contestant.contestantId
                   );
+                  
+                  const displayPlacement = contestant.finalPlacement % 1 !== 0 
+                    ? contestant.finalPlacement.toFixed(1) 
+                    : contestant.finalPlacement.toString();
 
                   return (
                     <tr
                       key={contestant.contestantId}
-                      className={`${isTopThree ? rankColors[contestant.rank] : zebra} transition-colors hover:bg-slate-100 dark:hover:bg-slate-800`}
+                      className={`${isTopThree ? rankColors[baseRank] || zebra : zebra} transition-colors hover:bg-slate-100 dark:hover:bg-slate-800`}
                     >
                       <td className="px-2 sm:px-5 py-2 sm:py-4 text-center">
-                        <span className={`inline-flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs sm:text-sm font-semibold ${
-                          contestant.rank === 1 ? 'bg-amber-400 text-amber-900 dark:bg-amber-500 dark:text-amber-950' :
-                          contestant.rank === 2 ? 'bg-slate-400 text-slate-900 dark:bg-slate-500 dark:text-slate-950' :
-                          contestant.rank === 3 ? 'bg-orange-400 text-orange-900 dark:bg-orange-500 dark:text-orange-950' :
+                        <span className={`inline-flex ${contestant.finalPlacement % 1 !== 0 ? 'min-w-[2rem] sm:min-w-[2.5rem] px-1' : 'w-6 sm:w-8'} h-6 sm:h-8 items-center justify-center rounded-full text-xs sm:text-sm font-semibold ${
+                          contestant.finalPlacement <= 1.5 ? 'bg-amber-400 text-amber-900 dark:bg-amber-500 dark:text-amber-950' :
+                          contestant.finalPlacement <= 2.5 ? 'bg-slate-400 text-slate-900 dark:bg-slate-500 dark:text-slate-950' :
+                          contestant.finalPlacement <= 3.5 ? 'bg-orange-400 text-orange-900 dark:bg-orange-500 dark:text-orange-950' :
                           'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
                         }`}>
-                          {contestant.rank}
+                          {displayPlacement}
                         </span>
                       </td>
                       <td className="px-2 sm:px-5 py-2 sm:py-4 text-center font-mono text-xs sm:text-base font-medium text-slate-800 dark:text-slate-100">
                         {String(contestant.candidateNumber).padStart(2, '0')}
                       </td>
                       {summary.judges.map((judge) => {
-                        const judgeScore = contestant.judgeScores.find((js) => js.judgeId === judge.id);
+                        const rank = judgeRanks.get(judge.id)?.get(contestant.contestantId);
                         const isLocked = contestantLocks.some((lock) => lock.judge_id === judge.id);
                         const lock = contestantLocks.find((lock) => lock.judge_id === judge.id);
+                        const displayRank = rank !== undefined 
+                          ? (rank % 1 !== 0 ? rank.toFixed(1) : rank.toString())
+                          : null;
                         return (
                           <td
                             key={judge.id}
                             className="px-1 sm:px-5 py-2 sm:py-4 text-center font-medium text-slate-800 dark:text-slate-100"
                           >
                             <div className="flex flex-col items-center gap-1 sm:gap-2">
-                              {judgeScore ? (
+                              {displayRank ? (
                                 <span className="inline-block rounded-md sm:rounded-lg bg-slate-100 px-1.5 sm:px-3 py-0.5 sm:py-1.5 font-mono text-[10px] sm:text-sm dark:bg-slate-800">
-                                  {judgeScore.totalScore.toFixed(2)}
+                                  {displayRank}
                                 </span>
                               ) : (
                                 <span className="text-slate-400 dark:text-slate-600">—</span>
@@ -1332,7 +1407,9 @@ function ScoringSummarySection() {
                       })}
                       <td className="px-2 sm:px-5 py-2 sm:py-4 text-center">
                         <span className="inline-block rounded-md sm:rounded-lg bg-slate-100 px-2 sm:px-4 py-1 sm:py-2 font-semibold font-mono text-xs sm:text-base text-slate-900 dark:bg-slate-800 dark:text-white">
-                          {contestant.average.toFixed(2)}
+                          {contestant.totalRankPoints % 1 !== 0 
+                            ? contestant.totalRankPoints.toFixed(1) 
+                            : contestant.totalRankPoints}
                         </span>
                       </td>
                     </tr>
@@ -1348,6 +1425,80 @@ function ScoringSummarySection() {
 
   const renderPrintTable = (label: string, summary?: CategoryScoreSummary | null) => {
     if (!summary) return null;
+    
+    // Calculate per-judge ranks for each contestant
+    const judgeRanks = new Map<string, Map<string, number>>(); // judgeId -> contestantId -> rank
+    
+    summary.judges.forEach((judge) => {
+      // Get all contestants with scores from this judge, sorted by score descending
+      const contestantsWithScores = summary.contestants
+        .map((c) => {
+          const judgeScore = c.judgeScores.find((js) => js.judgeId === judge.id);
+          return {
+            contestantId: c.contestantId,
+            score: judgeScore?.totalScore ?? null
+          };
+        })
+        .filter((c) => c.score !== null)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      
+      // Assign ranks with tie handling (fractional ranks)
+      const rankMap = new Map<string, number>();
+      let i = 0;
+      while (i < contestantsWithScores.length) {
+        const currentScore = contestantsWithScores[i].score;
+        let tieCount = 1;
+        while (i + tieCount < contestantsWithScores.length && contestantsWithScores[i + tieCount].score === currentScore) {
+          tieCount++;
+        }
+        const avgRank = tieCount === 1 ? i + 1 : (2 * i + tieCount + 1) / 2;
+        for (let j = 0; j < tieCount; j++) {
+          rankMap.set(contestantsWithScores[i + j].contestantId, avgRank);
+        }
+        i += tieCount;
+      }
+      judgeRanks.set(judge.id, rankMap);
+    });
+    
+    // Calculate total rank points for each contestant and sort by it
+    const contestantsWithRankPoints = summary.contestants.map((contestant) => {
+      let totalRankPoints = 0;
+      let rankedByCount = 0;
+      summary.judges.forEach((judge) => {
+        const rank = judgeRanks.get(judge.id)?.get(contestant.contestantId);
+        if (rank !== undefined) {
+          totalRankPoints += rank;
+          rankedByCount++;
+        }
+      });
+      return {
+        ...contestant,
+        totalRankPoints,
+        rankedByCount
+      };
+    }).sort((a, b) => a.totalRankPoints - b.totalRankPoints); // Lower rank points = better
+    
+    // Assign final placement based on total rank points (with .5 for ties)
+    const contestantsWithPlacement: Array<typeof contestantsWithRankPoints[0] & { finalPlacement: number }> = [];
+    let i = 0;
+    while (i < contestantsWithRankPoints.length) {
+      const currentPoints = contestantsWithRankPoints[i].totalRankPoints;
+      let tieCount = 1;
+      while (i + tieCount < contestantsWithRankPoints.length && 
+             contestantsWithRankPoints[i + tieCount].totalRankPoints === currentPoints) {
+        tieCount++;
+      }
+      // For ties, use average position (e.g., tie for 1st and 2nd = 1.5)
+      const avgPlacement = tieCount === 1 ? i + 1 : (2 * i + tieCount + 1) / 2;
+      for (let j = 0; j < tieCount; j++) {
+        contestantsWithPlacement.push({
+          ...contestantsWithRankPoints[i + j],
+          finalPlacement: avgPlacement
+        });
+      }
+      i += tieCount;
+    }
+    
     return (
       <div style={{ marginBottom: '0.5cm' }}>
         <div className="print-header" style={{ textAlign: 'center', marginBottom: '0.3cm' }}>
@@ -1357,6 +1508,9 @@ function ScoringSummarySection() {
           <h2 className="print-category-title" style={{ color: 'black', fontSize: '14px', fontWeight: 'bold', margin: '0.2cm 0' }}>
             {summary.categoryLabel} - <span style={{ textTransform: 'uppercase' }}>{label}</span>
           </h2>
+          <p style={{ color: '#666', fontSize: '10px', margin: 0 }}>
+            (Ranks shown per judge • Lower total = Better placement)
+          </p>
         </div>
         <div className="print-table-container">
           <table
@@ -1371,50 +1525,60 @@ function ScoringSummarySection() {
           >
             <thead>
               <tr>
-                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', fontWeight: 'bold' }}>
-                  Ranking
+                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
+                  Place
                 </th>
-                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', fontWeight: 'bold' }}>
-                  Candidate #
+                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
+                  Cand #
                 </th>
                 {summary.judges.map((judge) => (
                   <th
                     key={judge.id}
-                    style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', fontWeight: 'bold' }}
+                    style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}
                   >
                     {judge.name}
                   </th>
                 ))}
-                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', fontWeight: 'bold' }}>
-                  Average
+                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
+                  Total Pts
                 </th>
               </tr>
             </thead>
             <tbody>
-              {summary.contestants.map((contestant) => (
-                <tr key={contestant.contestantId}>
-                  <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center' }}>
-                    {contestant.rank}
-                  </td>
-                  <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center' }}>
-                    {String(contestant.candidateNumber).padStart(2, '0')}
-                  </td>
-                  {summary.judges.map((judge) => {
-                    const judgeScore = contestant.judgeScores.find((js) => js.judgeId === judge.id);
-                    return (
-                      <td
-                        key={judge.id}
-                        style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center' }}
-                      >
-                        {judgeScore ? judgeScore.totalScore.toFixed(2) : '—'}
-                      </td>
-                    );
-                  })}
-                  <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center', fontWeight: 'bold' }}>
-                    {contestant.average.toFixed(2)}
-                  </td>
-                </tr>
-              ))}
+              {contestantsWithPlacement.map((contestant) => {
+                const displayPlacement = contestant.finalPlacement % 1 !== 0 
+                  ? contestant.finalPlacement.toFixed(1) 
+                  : contestant.finalPlacement.toString();
+                return (
+                  <tr key={contestant.contestantId}>
+                    <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center', fontWeight: 'bold' }}>
+                      {displayPlacement}
+                    </td>
+                    <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center' }}>
+                      {String(contestant.candidateNumber).padStart(2, '0')}
+                    </td>
+                    {summary.judges.map((judge) => {
+                      const rank = judgeRanks.get(judge.id)?.get(contestant.contestantId);
+                      const displayRank = rank !== undefined 
+                        ? (rank % 1 !== 0 ? rank.toFixed(1) : rank.toString())
+                        : '—';
+                      return (
+                        <td
+                          key={judge.id}
+                          style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center' }}
+                        >
+                          {displayRank}
+                        </td>
+                      );
+                    })}
+                    <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center', fontWeight: 'bold' }}>
+                      {contestant.totalRankPoints % 1 !== 0 
+                        ? contestant.totalRankPoints.toFixed(1) 
+                        : contestant.totalRankPoints}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

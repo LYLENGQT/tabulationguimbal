@@ -341,7 +341,7 @@ export function RankingsPage() {
             <div>
               <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-slate-900 dark:text-white">Per-Category Rankings</h2>
               <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
-                Scores are ranked within each category and division. Top 3 are highlighted.
+                Sum of per-judge ranks. Lower total = better placement. Top 3 highlighted.
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5 sm:gap-2 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-1 sm:pb-0">
@@ -380,7 +380,7 @@ export function RankingsPage() {
                       <tr>
                         <th className="px-2 sm:px-4 py-2 sm:py-3">Rank</th>
                         <th className="px-2 sm:px-4 py-2 sm:py-3">Contestant</th>
-                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center whitespace-nowrap">Cat. Score</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center whitespace-nowrap">Total Pts</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/30">
@@ -397,7 +397,9 @@ export function RankingsPage() {
                                 </div>
                               </td>
                               <td className="px-2 sm:px-4 py-2 sm:py-3 text-center font-mono text-xs sm:text-sm">
-                                {row.category_score?.toFixed(3)}
+                                {row.category_score % 1 !== 0 
+                                  ? row.category_score?.toFixed(1) 
+                                  : row.category_score}
                               </td>
                             </tr>
                           );

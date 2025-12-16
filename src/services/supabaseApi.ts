@@ -511,14 +511,127 @@ export const fetchCategoryRankings = async (
   division: Division,
   categorySlug: string
 ): Promise<CategoryRankingRow[]> => {
-  const { data, error } = await supabase
-    .from('category_rankings')
-    .select('*')
-    .eq('division', division)
-    .eq('category_slug', categorySlug)
-    .order('rank');
-  if (error) throw error;
-  return data as CategoryRankingRow[];
+  // Get category info
+  const { data: category, error: catError } = await supabase
+    .from('categories')
+    .select('id, label')
+    .eq('slug', categorySlug)
+    .single();
+  if (catError) throw catError;
+  if (!category) return [];
+
+  // Fetch all scores for this category
+  const { data: scores, error: scoresError } = await supabase
+    .from('scores')
+    .select(`
+      judge_id,
+      contestant_id,
+      weighted_score,
+      contestants!inner(id, number, full_name, division)
+    `)
+    .eq('category_id', category.id);
+  if (scoresError) throw scoresError;
+  if (!scores || scores.length === 0) return [];
+
+  // Filter by division
+  const filteredScores = scores.filter((s: any) => s.contestants?.division === division);
+  if (filteredScores.length === 0) return [];
+
+  // Group scores by judge and contestant to get totals
+  const judgeContestantTotals = new Map<string, Map<string, number>>(); // judgeId -> contestantId -> total
+  const contestantInfo = new Map<string, { full_name: string; number: number }>();
+
+  filteredScores.forEach((score: any) => {
+    const judgeId = score.judge_id;
+    const contestantId = score.contestant_id;
+    
+    if (!judgeContestantTotals.has(judgeId)) {
+      judgeContestantTotals.set(judgeId, new Map());
+    }
+    const judgeMap = judgeContestantTotals.get(judgeId)!;
+    judgeMap.set(contestantId, (judgeMap.get(contestantId) ?? 0) + score.weighted_score);
+    
+    if (!contestantInfo.has(contestantId)) {
+      contestantInfo.set(contestantId, {
+        full_name: score.contestants.full_name,
+        number: score.contestants.number
+      });
+    }
+  });
+
+  // Calculate per-judge ranks for each contestant
+  const judgeRanks = new Map<string, Map<string, number>>(); // judgeId -> contestantId -> rank
+
+  judgeContestantTotals.forEach((contestantTotals, judgeId) => {
+    // Sort contestants by this judge's scores (descending)
+    const sorted = Array.from(contestantTotals.entries())
+      .sort((a, b) => b[1] - a[1]);
+    
+    // Assign ranks with tie handling (.5 for ties)
+    const rankMap = new Map<string, number>();
+    let i = 0;
+    while (i < sorted.length) {
+      const currentScore = sorted[i][1];
+      let tieCount = 1;
+      while (i + tieCount < sorted.length && sorted[i + tieCount][1] === currentScore) {
+        tieCount++;
+      }
+      const avgRank = tieCount === 1 ? i + 1 : (2 * i + tieCount + 1) / 2;
+      for (let j = 0; j < tieCount; j++) {
+        rankMap.set(sorted[i + j][0], avgRank);
+      }
+      i += tieCount;
+    }
+    judgeRanks.set(judgeId, rankMap);
+  });
+
+  // Sum ranks for each contestant across all judges
+  const contestantRankTotals = new Map<string, number>();
+  contestantInfo.forEach((_, contestantId) => {
+    let totalRankPoints = 0;
+    judgeRanks.forEach((rankMap) => {
+      const rank = rankMap.get(contestantId);
+      if (rank !== undefined) {
+        totalRankPoints += rank;
+      }
+    });
+    contestantRankTotals.set(contestantId, totalRankPoints);
+  });
+
+  // Sort by total rank points (lowest = best) and assign final placement
+  const sortedContestants = Array.from(contestantRankTotals.entries())
+    .sort((a, b) => a[1] - b[1]);
+
+  // Assign final placement with tie handling
+  const results: CategoryRankingRow[] = [];
+  let i = 0;
+  while (i < sortedContestants.length) {
+    const currentPoints = sortedContestants[i][1];
+    let tieCount = 1;
+    while (i + tieCount < sortedContestants.length && sortedContestants[i + tieCount][1] === currentPoints) {
+      tieCount++;
+    }
+    const avgPlacement = tieCount === 1 ? i + 1 : (2 * i + tieCount + 1) / 2;
+    
+    for (let j = 0; j < tieCount; j++) {
+      const [contestantId, totalPoints] = sortedContestants[i + j];
+      const info = contestantInfo.get(contestantId)!;
+      results.push({
+        contestant_id: contestantId,
+        full_name: info.full_name,
+        number: info.number,
+        division,
+        category_id: category.id,
+        category_slug: categorySlug as CategoryRankingRow['category_slug'],
+        category_label: category.label,
+        category_score: totalPoints, // Now this is total rank points (lower = better)
+        rank: avgPlacement
+      });
+    }
+    i += tieCount;
+  }
+
+  return results;
 };
 
 export const fetchOverallRankings = async (
