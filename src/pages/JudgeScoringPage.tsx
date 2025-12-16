@@ -306,12 +306,19 @@ export function JudgeScoringPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/40">
                       {(() => {
-                        // Calculate totals and ranks for all locked contestants
+                        // Calculate totals for all contestants (real-time)
                         const contestantTotals = contestants.map((contestant) => {
                           const isLocked = Boolean(
                             locksQuery.data?.some((lock) => lock.contestant_id === contestant.id)
                           );
                           const rowValues = sheetValues[contestant.id] ?? {};
+                          
+                          // Check if any values have been entered
+                          const hasValues = criteria.some((criterion) => {
+                            const raw = rowValues[criterion.id];
+                            return raw !== undefined && raw !== '';
+                          });
+                          
                           const total = criteria.reduce((sum, criterion) => {
                             const raw = rowValues[criterion.id];
                             if (raw === undefined || raw === '') return sum;
@@ -319,30 +326,26 @@ export function JudgeScoringPage() {
                             if (Number.isNaN(n)) return sum;
                             return sum + n;
                           }, 0);
-                          return { id: contestant.id, total, isLocked };
+                          return { id: contestant.id, total, isLocked, hasValues };
                         });
 
-                        // Sort by total (descending) to compute ranks, only for locked contestants
-                        const lockedTotals = contestantTotals
-                          .filter((c) => c.isLocked)
+                        // Calculate ranks for ALL contestants with entered values (real-time ranking)
+                        const contestantsWithValues = contestantTotals
+                          .filter((c) => c.hasValues)
                           .sort((a, b) => b.total - a.total);
 
-                        // Assign ranks with fractional ranks for ties (e.g., 2.5 for tie between 2nd and 3rd)
+                        // Assign ranks with fractional ranks for ties
                         const rankMap = new Map<string, number>();
                         let i = 0;
-                        while (i < lockedTotals.length) {
-                          // Find all contestants with the same score
-                          const currentScore = lockedTotals[i].total;
+                        while (i < contestantsWithValues.length) {
+                          const currentScore = contestantsWithValues[i].total;
                           let tieCount = 1;
-                          while (i + tieCount < lockedTotals.length && lockedTotals[i + tieCount].total === currentScore) {
+                          while (i + tieCount < contestantsWithValues.length && contestantsWithValues[i + tieCount].total === currentScore) {
                             tieCount++;
                           }
-                          // Calculate average rank for tied contestants
-                          // Positions are i+1, i+2, ..., i+tieCount
-                          // Average = (sum of positions) / tieCount = ((i+1) + (i+tieCount)) / 2
                           const avgRank = tieCount === 1 ? i + 1 : (2 * i + tieCount + 1) / 2;
                           for (let j = 0; j < tieCount; j++) {
-                            rankMap.set(lockedTotals[i + j].id, avgRank);
+                            rankMap.set(contestantsWithValues[i + j].id, avgRank);
                           }
                           i += tieCount;
                         }
@@ -355,6 +358,7 @@ export function JudgeScoringPage() {
                           );
                           const contestantData = contestantTotals.find((c) => c.id === contestant.id);
                           const total = contestantData?.total ?? 0;
+                          const hasValues = contestantData?.hasValues ?? false;
                           const rank = rankMap.get(contestant.id);
                           const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/50';
                           return (
@@ -406,27 +410,41 @@ export function JudgeScoringPage() {
                                 );
                               })}
                               <td className="px-2 sm:px-3 py-2 sm:py-3 text-center">
-                                {isLockedForContestant ? (
-                                  <span className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
+                                {hasValues ? (
+                                  <span className={`font-semibold text-xs sm:text-sm ${
+                                    isLockedForContestant 
+                                      ? 'text-slate-900 dark:text-slate-100' 
+                                      : 'text-blue-600 dark:text-blue-400'
+                                  }`}>
                                     {total.toFixed(1)}
+                                    {!isLockedForContestant && (
+                                      <span className="text-[8px] sm:text-[10px] text-blue-400 dark:text-blue-500 ml-0.5">*</span>
+                                    )}
                                   </span>
                                 ) : (
                                   <span className="text-slate-400 dark:text-slate-600">—</span>
                                 )}
                               </td>
                               <td className="px-2 sm:px-3 py-2 sm:py-3 text-center">
-                                {isLockedForContestant && rank !== undefined ? (
+                                {hasValues && rank !== undefined ? (
                                   (() => {
                                     const isTie = rank % 1 !== 0;
                                     const displayRank = isTie ? rank.toFixed(1) : rank.toString();
-                                    const colorClass = 
-                                      rank <= 1.5
-                                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                                        : rank <= 2.5
-                                        ? 'bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300'
-                                        : rank <= 3.5
-                                        ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300'
-                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400';
+                                    const colorClass = isLockedForContestant
+                                      ? (rank <= 1.5
+                                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                                          : rank <= 2.5
+                                          ? 'bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300'
+                                          : rank <= 3.5
+                                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300'
+                                          : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400')
+                                      : (rank <= 1.5
+                                          ? 'bg-amber-50 text-amber-500 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30'
+                                          : rank <= 2.5
+                                          ? 'bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/30'
+                                          : rank <= 3.5
+                                          ? 'bg-orange-50 text-orange-500 border border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/30'
+                                          : 'bg-slate-50 text-slate-500 border border-slate-200 dark:bg-slate-700/50 dark:text-slate-500 dark:border-slate-600');
                                     return (
                                       <span className={`inline-flex items-center justify-center ${isTie ? 'min-w-[2rem] sm:min-w-[2.5rem] px-1.5' : 'h-6 w-6 sm:h-7 sm:w-7'} h-6 sm:h-7 rounded-full text-[10px] sm:text-xs font-bold ${colorClass}`}>
                                         {displayRank}
