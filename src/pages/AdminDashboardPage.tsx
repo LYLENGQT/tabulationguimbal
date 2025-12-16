@@ -39,7 +39,9 @@ import {
   fetchCategoryScoreSummary,
   fetchJudges,
   fetchJudgesWithStatus,
-  fetchScoresForExport,
+  fetchRankingsForExport,
+  fetchOverallRankings,
+  fetchCategoryRankings,
   clearActivityLog,
   resetSystem,
   supabaseAuth,
@@ -54,7 +56,7 @@ import { useBrowserNotifications } from '../hooks/useBrowserNotifications';
 import type { CategoryScoreSummary } from '../services/supabaseApi';
 import type { Category } from '../types/scoring';
 import type { Division } from '../types/scoring';
-import { downloadCsv, downloadXlsx, toCsv } from '../utils/export';
+import { downloadCsv, downloadXlsxMultiSheet, sheetsToCSV } from '../utils/export';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Badge } from '../components/ui/badge';
 import {
@@ -293,13 +295,21 @@ export function AdminDashboardPage() {
   });
 
   const handleExportCsv = async () => {
-    const rows = await fetchScoresForExport();
-    downloadCsv('scores.csv', toCsv(rows));
+    const { sheets } = await fetchRankingsForExport();
+    if (sheets.length === 0) {
+      alert('No scores to export');
+      return;
+    }
+    downloadCsv('rankings.csv', sheetsToCSV(sheets));
   };
 
   const handleExportXlsx = async () => {
-    const rows = await fetchScoresForExport();
-    downloadXlsx('scores.xlsx', rows);
+    const { sheets } = await fetchRankingsForExport();
+    if (sheets.length === 0) {
+      alert('No scores to export');
+      return;
+    }
+    downloadXlsxMultiSheet('rankings.xlsx', sheets);
   };
 
   const handleReset = async () => {
@@ -1118,6 +1128,8 @@ function ScoringSummarySection() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [printMode, setPrintMode] = useState(false);
 
+  const isOverallView = selectedCategoryId === 'overall';
+
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories
@@ -1126,19 +1138,65 @@ function ScoringSummarySection() {
   const summaryMaleQuery = useQuery({
     queryKey: ['category-score-summary', selectedCategoryId, 'male'],
     queryFn: () => fetchCategoryScoreSummary(selectedCategoryId!, 'male'),
-    enabled: Boolean(selectedCategoryId)
+    enabled: Boolean(selectedCategoryId) && !isOverallView
   });
 
   const summaryFemaleQuery = useQuery({
     queryKey: ['category-score-summary', selectedCategoryId, 'female'],
     queryFn: () => fetchCategoryScoreSummary(selectedCategoryId!, 'female'),
-    enabled: Boolean(selectedCategoryId)
+    enabled: Boolean(selectedCategoryId) && !isOverallView
+  });
+
+  // Overall rankings queries
+  const overallMaleQuery = useQuery({
+    queryKey: ['overall-rankings', 'male'],
+    queryFn: () => fetchOverallRankings('male'),
+    enabled: isOverallView
+  });
+
+  const overallFemaleQuery = useQuery({
+    queryKey: ['overall-rankings', 'female'],
+    queryFn: () => fetchOverallRankings('female'),
+    enabled: isOverallView
+  });
+
+  // Fetch all category rankings for the overall print view
+  const allCategoryRankingsMaleQuery = useQuery({
+    queryKey: ['all-category-rankings', 'male'],
+    queryFn: async () => {
+      const cats = categoriesQuery.data ?? [];
+      const results: { categoryLabel: string; contestantRanks: Map<string, number> }[] = [];
+      for (const cat of cats) {
+        const rankings = await fetchCategoryRankings('male', cat.slug);
+        const rankMap = new Map<string, number>();
+        rankings.forEach((r) => rankMap.set(r.contestant_id, r.rank));
+        results.push({ categoryLabel: cat.label, contestantRanks: rankMap });
+      }
+      return results;
+    },
+    enabled: isOverallView && (categoriesQuery.data?.length ?? 0) > 0
+  });
+
+  const allCategoryRankingsFemaleQuery = useQuery({
+    queryKey: ['all-category-rankings', 'female'],
+    queryFn: async () => {
+      const cats = categoriesQuery.data ?? [];
+      const results: { categoryLabel: string; contestantRanks: Map<string, number> }[] = [];
+      for (const cat of cats) {
+        const rankings = await fetchCategoryRankings('female', cat.slug);
+        const rankMap = new Map<string, number>();
+        rankings.forEach((r) => rankMap.set(r.contestant_id, r.rank));
+        results.push({ categoryLabel: cat.label, contestantRanks: rankMap });
+      }
+      return results;
+    },
+    enabled: isOverallView && (categoriesQuery.data?.length ?? 0) > 0
   });
 
   const locksQuery = useQuery({
     queryKey: ['all-locks', selectedCategoryId],
     queryFn: () => fetchAllLocksForCategory(selectedCategoryId!),
-    enabled: Boolean(selectedCategoryId)
+    enabled: Boolean(selectedCategoryId) && !isOverallView
   });
 
   const unlockMutation = useMutation({
@@ -1586,6 +1644,216 @@ function ScoringSummarySection() {
     );
   };
 
+  // Overall table render function (screen view)
+  const renderOverallTable = (
+    label: string, 
+    overallData?: { contestant_id: string; full_name: string; number: number; total_points: number; final_placement: number }[] | null,
+    categoryRankings?: { categoryLabel: string; contestantRanks: Map<string, number> }[] | null
+  ) => {
+    if (!overallData || overallData.length === 0) return null;
+    const isMale = label.toLowerCase() === 'male';
+    const categories = categoriesQuery.data ?? [];
+
+    return (
+      <Card className="border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 border-b border-slate-200 px-3 sm:px-6 py-3 sm:py-4 dark:border-slate-800">
+          <div className="space-y-0.5 sm:space-y-1">
+            <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              OVERALL RANKINGS
+            </p>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
+                Division: <span className="capitalize">{label}</span>
+              </p>
+              <Badge className={`rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium ${isMale ? 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'}`}>
+                {label}
+              </Badge>
+            </div>
+            <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400">
+              Sum of category final ranks • Lower total = Better placement
+            </p>
+          </div>
+        </div>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto -mx-px">
+            <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm dark:divide-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-800/50">
+                <tr>
+                  <th className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap">Place</th>
+                  <th className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap">Cand #</th>
+                  {categories.map((cat) => (
+                    <th key={cat.id} className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap max-w-[80px] sm:max-w-none truncate">
+                      <span className="hidden sm:inline">{cat.label}</span>
+                      <span className="sm:hidden">{cat.label.split(' ')[0]}</span>
+                    </th>
+                  ))}
+                  <th className="px-2 sm:px-5 py-2 sm:py-4 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 whitespace-nowrap">Total Pts</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                {overallData.map((row, idx) => {
+                  const isTopThree = row.final_placement <= 3;
+                  const rankColors: Record<number, string> = {
+                    1: 'bg-amber-50 border-l-4 border-amber-400 dark:bg-amber-950/20 dark:border-amber-500',
+                    2: 'bg-slate-50 border-l-4 border-slate-400 dark:bg-slate-800/50 dark:border-slate-500',
+                    3: 'bg-orange-50 border-l-4 border-orange-400 dark:bg-orange-950/20 dark:border-orange-500'
+                  };
+                  const baseRank = Math.floor(row.final_placement);
+                  const zebra = idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50';
+                  const displayPlacement = row.final_placement % 1 !== 0 
+                    ? row.final_placement.toFixed(1) 
+                    : row.final_placement.toString();
+
+                  return (
+                    <tr
+                      key={row.contestant_id}
+                      className={`${isTopThree ? rankColors[baseRank] || zebra : zebra} transition-colors hover:bg-slate-100 dark:hover:bg-slate-800`}
+                    >
+                      <td className="px-2 sm:px-5 py-2 sm:py-4 text-center">
+                        <span className={`inline-flex ${row.final_placement % 1 !== 0 ? 'min-w-[2rem] sm:min-w-[2.5rem] px-1' : 'w-6 sm:w-8'} h-6 sm:h-8 items-center justify-center rounded-full text-xs sm:text-sm font-semibold ${
+                          row.final_placement <= 1.5 ? 'bg-amber-400 text-amber-900 dark:bg-amber-500 dark:text-amber-950' :
+                          row.final_placement <= 2.5 ? 'bg-slate-400 text-slate-900 dark:bg-slate-500 dark:text-slate-950' :
+                          row.final_placement <= 3.5 ? 'bg-orange-400 text-orange-900 dark:bg-orange-500 dark:text-orange-950' :
+                          'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                        }`}>
+                          {displayPlacement}
+                        </span>
+                      </td>
+                      <td className="px-2 sm:px-5 py-2 sm:py-4 text-center font-mono text-xs sm:text-base font-medium text-slate-800 dark:text-slate-100">
+                        {String(row.number).padStart(2, '0')}
+                      </td>
+                      {categories.map((cat) => {
+                        const catData = categoryRankings?.find((cr) => cr.categoryLabel === cat.label);
+                        const catRank = catData?.contestantRanks.get(row.contestant_id);
+                        const displayRank = catRank !== undefined 
+                          ? (catRank % 1 !== 0 ? catRank.toFixed(1) : catRank.toString())
+                          : '—';
+                        return (
+                          <td
+                            key={cat.id}
+                            className="px-1 sm:px-5 py-2 sm:py-4 text-center font-medium text-slate-800 dark:text-slate-100"
+                          >
+                            <span className="inline-block rounded-md sm:rounded-lg bg-slate-100 px-1.5 sm:px-3 py-0.5 sm:py-1.5 font-mono text-[10px] sm:text-sm dark:bg-slate-800">
+                              {displayRank}
+                            </span>
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 sm:px-5 py-2 sm:py-4 text-center">
+                        <span className="inline-block rounded-md sm:rounded-lg bg-slate-100 px-2 sm:px-4 py-1 sm:py-2 font-semibold font-mono text-xs sm:text-base text-slate-900 dark:bg-slate-800 dark:text-white">
+                          {row.total_points % 1 !== 0 
+                            ? row.total_points.toFixed(1) 
+                            : row.total_points}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Overall table render function (print view)
+  const renderOverallPrintTable = (
+    label: string, 
+    overallData?: { contestant_id: string; full_name: string; number: number; total_points: number; final_placement: number }[] | null,
+    categoryRankings?: { categoryLabel: string; contestantRanks: Map<string, number> }[] | null
+  ) => {
+    if (!overallData || overallData.length === 0) return null;
+    const categories = categoriesQuery.data ?? [];
+
+    return (
+      <div style={{ marginBottom: '0.5cm' }}>
+        <div className="print-header" style={{ textAlign: 'center', marginBottom: '0.3cm' }}>
+          <h1 className="print-main-title" style={{ color: 'black', fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
+            Mr & Ms Teen Tabulation
+          </h1>
+          <h2 className="print-category-title" style={{ color: 'black', fontSize: '14px', fontWeight: 'bold', margin: '0.2cm 0' }}>
+            OVERALL RANKINGS - <span style={{ textTransform: 'uppercase' }}>{label}</span>
+          </h2>
+          <p style={{ color: '#666', fontSize: '10px', margin: 0 }}>
+            (Sum of category final ranks • Lower total = Better placement)
+          </p>
+        </div>
+        <div className="print-table-container">
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              border: '1px solid #000',
+              color: 'black',
+              backgroundColor: 'white',
+              fontSize: '12px'
+            }}
+          >
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
+                  Place
+                </th>
+                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
+                  Cand #
+                </th>
+                {categories.map((cat) => (
+                  <th
+                    key={cat.id}
+                    style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}
+                  >
+                    {cat.label}
+                  </th>
+                ))}
+                <th style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
+                  Total Pts
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {overallData.map((row) => {
+                const displayPlacement = row.final_placement % 1 !== 0 
+                  ? row.final_placement.toFixed(1) 
+                  : row.final_placement.toString();
+                return (
+                  <tr key={row.contestant_id}>
+                    <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center', fontWeight: 'bold' }}>
+                      {displayPlacement}
+                    </td>
+                    <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center' }}>
+                      {String(row.number).padStart(2, '0')}
+                    </td>
+                    {categories.map((cat) => {
+                      const catData = categoryRankings?.find((cr) => cr.categoryLabel === cat.label);
+                      const catRank = catData?.contestantRanks.get(row.contestant_id);
+                      const displayRank = catRank !== undefined 
+                        ? (catRank % 1 !== 0 ? catRank.toFixed(1) : catRank.toString())
+                        : '—';
+                      return (
+                        <td
+                          key={cat.id}
+                          style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center' }}
+                        >
+                          {displayRank}
+                        </td>
+                      );
+                    })}
+                    <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center', fontWeight: 'bold' }}>
+                      {row.total_points % 1 !== 0 
+                        ? row.total_points.toFixed(1) 
+                        : row.total_points}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={printMode ? 'space-y-4 sm:space-y-6 printing' : 'space-y-4 sm:space-y-6'}>
       <Card className="border border-slate-200 bg-white p-3 sm:p-4 lg:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -1599,6 +1867,10 @@ function ScoringSummarySection() {
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="overall" className="font-semibold">
+                  📊 OVERALL RANKINGS
+                </SelectItem>
+                <div className="border-b border-slate-200 dark:border-slate-700 my-1" />
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     {cat.label}
@@ -1618,21 +1890,25 @@ function ScoringSummarySection() {
         </div>
       </Card>
 
-      {(summaryMaleQuery.isLoading || summaryFemaleQuery.isLoading) && (
+      {((summaryMaleQuery.isLoading || summaryFemaleQuery.isLoading) || 
+        (isOverallView && (overallMaleQuery.isLoading || overallFemaleQuery.isLoading))) && (
         <Card className="border border-slate-200 bg-white p-4 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-center gap-2 sm:gap-3">
             <div className="h-4 w-4 sm:h-5 sm:w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900 dark:border-slate-600 dark:border-t-white" />
-            <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">Loading scores...</p>
+            <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">
+              {isOverallView ? 'Loading overall rankings...' : 'Loading scores...'}
+            </p>
           </div>
         </Card>
       )}
-      {(summaryMaleQuery.error || summaryFemaleQuery.error) && (
+      {((summaryMaleQuery.error || summaryFemaleQuery.error) ||
+        (isOverallView && (overallMaleQuery.error || overallFemaleQuery.error))) && (
         <Card className="border border-red-200 bg-red-50 p-4 sm:p-6 shadow-sm dark:border-red-800 dark:bg-red-950/20">
-          <p className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">Error loading scores. Please try again.</p>
+          <p className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">Error loading data. Please try again.</p>
         </Card>
       )}
 
-      {printMode &&
+      {printMode && !isOverallView &&
         createPortal(
           <div className="print-mode" style={{ padding: '0.5cm' }}>
             {renderPrintTable('male', summaryMale)}
@@ -1641,14 +1917,30 @@ function ScoringSummarySection() {
           document.body
         )}
 
-      {!printMode && (
+      {printMode && isOverallView &&
+        createPortal(
+          <div className="print-mode" style={{ padding: '0.5cm' }}>
+            {renderOverallPrintTable('male', overallMaleQuery.data, allCategoryRankingsMaleQuery.data)}
+            {renderOverallPrintTable('female', overallFemaleQuery.data, allCategoryRankingsFemaleQuery.data)}
+          </div>,
+          document.body
+        )}
+
+      {!printMode && !isOverallView && (
         <div className="space-y-4 sm:space-y-6">
           {renderTable('male', summaryMale)}
           {renderTable('female', summaryFemale)}
         </div>
       )}
 
-      {!summaryMale && !summaryFemale && !summaryMaleQuery.isLoading && !summaryFemaleQuery.isLoading && (
+      {!printMode && isOverallView && (
+        <div className="space-y-4 sm:space-y-6">
+          {renderOverallTable('male', overallMaleQuery.data, allCategoryRankingsMaleQuery.data)}
+          {renderOverallTable('female', overallFemaleQuery.data, allCategoryRankingsFemaleQuery.data)}
+        </div>
+      )}
+
+      {!isOverallView && !summaryMale && !summaryFemale && !summaryMaleQuery.isLoading && !summaryFemaleQuery.isLoading && (
         <Card className="border border-slate-200 bg-white p-4 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="text-center">
             <div className="mx-auto mb-3 sm:mb-4 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
@@ -1659,6 +1951,23 @@ function ScoringSummarySection() {
             </p>
             <p className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-slate-500 dark:text-slate-500">
               Scores will appear here once judges submit their evaluations.
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {isOverallView && !overallMaleQuery.data?.length && !overallFemaleQuery.data?.length && 
+       !overallMaleQuery.isLoading && !overallFemaleQuery.isLoading && (
+        <Card className="border border-slate-200 bg-white p-4 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="text-center">
+            <div className="mx-auto mb-3 sm:mb-4 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+              <Award className="h-6 w-6 sm:h-8 sm:w-8 text-slate-400 dark:text-slate-500" />
+            </div>
+            <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">
+              No overall rankings available yet.
+            </p>
+            <p className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-slate-500 dark:text-slate-500">
+              Overall rankings are calculated from category scores.
             </p>
           </div>
         </Card>

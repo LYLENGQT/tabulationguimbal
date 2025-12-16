@@ -14,10 +14,16 @@ import type { CategorySlug } from '../types/scoring';
 import { CATEGORY_CONFIG } from '../constants/scoring';
 
 const highlightClassForRank = (rank: number) => {
-  if (rank === 1) return 'bg-gradient-to-r from-amber-100/80 to-amber-50/60 text-amber-700 dark:from-amber-500/20 dark:to-amber-500/10 dark:text-amber-50';
-  if (rank === 2) return 'bg-gradient-to-r from-slate-200/80 to-slate-100/60 text-slate-700 dark:from-slate-400/20 dark:to-slate-400/10 dark:text-slate-50';
-  if (rank === 3) return 'bg-gradient-to-r from-orange-100/80 to-orange-50/60 text-orange-700 dark:from-orange-500/20 dark:to-orange-500/10 dark:text-orange-50';
+  // Handle fractional ranks for ties (e.g., 1.5 should highlight as top 3)
+  if (rank <= 1) return 'bg-gradient-to-r from-amber-100/80 to-amber-50/60 text-amber-700 dark:from-amber-500/20 dark:to-amber-500/10 dark:text-amber-50';
+  if (rank <= 2) return 'bg-gradient-to-r from-slate-200/80 to-slate-100/60 text-slate-700 dark:from-slate-400/20 dark:to-slate-400/10 dark:text-slate-50';
+  if (rank <= 3) return 'bg-gradient-to-r from-orange-100/80 to-orange-50/60 text-orange-700 dark:from-orange-500/20 dark:to-orange-500/10 dark:text-orange-50';
   return '';
+};
+
+// Format a number to show decimals only if needed (for ties)
+const formatRank = (rank: number) => {
+  return rank % 1 !== 0 ? rank.toFixed(1) : rank.toString();
 };
 
 const logoModules = import.meta.glob('../../logos/*.{jpg,jpeg,png,webp}', {
@@ -104,6 +110,10 @@ export function RankingsPage() {
   };
 
   const formatPlacement = (placement: number, division: string) => {
+    // Handle fractional placements for ties (display as numeric rank)
+    if (placement % 1 !== 0) {
+      return formatRank(placement);
+    }
     if (placement === 1) {
       return division.toLowerCase() === 'male' ? 'Mr Teen' : 'Ms Teen';
     } else {
@@ -165,7 +175,7 @@ export function RankingsPage() {
                     Candidate #{row.number}
                   </td>
                   <td style={{ border: '1px solid #000', padding: '6px 4px', color: 'black', backgroundColor: 'white', textAlign: 'center', fontWeight: 'bold' }}>
-                    {row.total_points?.toFixed(2)}
+                    {formatRank(row.total_points)}
                   </td>
                 </tr>
               ))}
@@ -308,14 +318,14 @@ export function RankingsPage() {
                           const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/40';
                           return (
                             <tr key={row.contestant_id} className={`${cls} ${zebra} transition hover:bg-slate-100 dark:hover:bg-white/10`}>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold">{row.final_placement}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold">{formatRank(row.final_placement)}</td>
                               <td className="px-2 sm:px-4 py-2 sm:py-3">
                                 <div className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
                                   #{row.number?.toString().padStart(2, '0')} <span className="hidden sm:inline">{row.full_name}</span>
                                 </div>
                               </td>
                               <td className="px-2 sm:px-4 py-2 sm:py-3 text-center font-mono text-xs sm:text-sm">
-                                {row.total_points?.toFixed(2)}
+                                {formatRank(row.total_points)}
                               </td>
                             </tr>
                           );
@@ -390,16 +400,14 @@ export function RankingsPage() {
                           const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/40';
                           return (
                             <tr key={row.contestant_id} className={`${cls} ${zebra} transition hover:bg-slate-100 dark:hover:bg-white/10`}>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold">{row.rank}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold">{formatRank(row.rank)}</td>
                               <td className="px-2 sm:px-4 py-2 sm:py-3">
                                 <div className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
                                   #{row.number?.toString().padStart(2, '0')} <span className="hidden sm:inline">{row.full_name}</span>
                                 </div>
                               </td>
                               <td className="px-2 sm:px-4 py-2 sm:py-3 text-center font-mono text-xs sm:text-sm">
-                                {row.category_score % 1 !== 0 
-                                  ? row.category_score?.toFixed(1) 
-                                  : row.category_score}
+                                {formatRank(row.category_score)}
                               </td>
                             </tr>
                           );

@@ -1,5 +1,10 @@
 import * as XLSX from 'xlsx';
 
+export interface RankingExportSheet {
+  name: string;
+  rows: Record<string, unknown>[];
+}
+
 export const toCsv = (rows: Record<string, unknown>[]) => {
   if (!rows.length) return '';
   const headers = Object.keys(rows[0]);
@@ -17,6 +22,21 @@ export const toCsv = (rows: Record<string, unknown>[]) => {
     )
   ];
   return lines.join('\n');
+};
+
+// Convert multiple sheets to CSV with section headers
+export const sheetsToCSV = (sheets: RankingExportSheet[]) => {
+  const sections: string[] = [];
+  
+  sheets.forEach((sheet) => {
+    if (sheet.rows.length === 0) return;
+    
+    // Add section header
+    sections.push(`\n=== ${sheet.name} ===\n`);
+    sections.push(toCsv(sheet.rows));
+  });
+  
+  return sections.join('\n');
 };
 
 export const downloadCsv = (filename: string, csv: string) => {
@@ -46,6 +66,29 @@ export const downloadXlsx = (filename: string, rows: Record<string, unknown>[]) 
   XLSX.utils.book_append_sheet(wb, ws, 'Scores');
   
   // Write the file
+  XLSX.writeFile(wb, filename);
+};
+
+// Export with multiple sheets (one per category/division)
+export const downloadXlsxMultiSheet = (filename: string, sheets: RankingExportSheet[]) => {
+  const wb = XLSX.utils.book_new();
+  
+  sheets.forEach((sheet) => {
+    if (sheet.rows.length === 0) return;
+    
+    const ws = XLSX.utils.json_to_sheet(sheet.rows);
+    
+    // Set column widths for better readability
+    const colWidths = Object.keys(sheet.rows[0]).map((key) => ({
+      wch: Math.max(key.length, 12)
+    }));
+    ws['!cols'] = colWidths;
+    
+    // Truncate sheet name to 31 chars (Excel limit)
+    const sheetName = sheet.name.substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+  
   XLSX.writeFile(wb, filename);
 };
 
