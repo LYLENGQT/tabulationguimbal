@@ -39,10 +39,30 @@ const actionColors: Record<ActivityLog['action_type'], string> = {
 
 const formatTime = (dateString: string) => {
   const date = new Date(dateString);
-  return date.toLocaleTimeString([], {
+  const now = new Date();
+  
+  // Get date parts for comparison (ignoring time)
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const activityDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  const timeStr = date.toLocaleTimeString([], {
     hour: 'numeric',
     minute: '2-digit'
   });
+  
+  if (activityDate.getTime() === today.getTime()) {
+    return `Today, ${timeStr}`;
+  } else if (activityDate.getTime() === yesterday.getTime()) {
+    return `Yesterday, ${timeStr}`;
+  } else {
+    // Format as MM-DD-YYYY
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}-${day}-${year}, ${timeStr}`;
+  }
 };
 
 const formatActionLabel = (action: ActivityLog['action_type']) =>
