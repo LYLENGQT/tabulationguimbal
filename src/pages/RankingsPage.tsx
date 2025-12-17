@@ -115,7 +115,7 @@ export function RankingsPage() {
       return formatRank(placement);
     }
     if (placement === 1) {
-      return division.toLowerCase() === 'male' ? 'Mr Teen' : 'Ms Teen';
+      return division.toLowerCase() === 'male' ? 'MR TEEN 2025' : 'MS TEEN 2025';
     } else {
       const runnerUpNumber = placement - 1;
       const suffixes: Record<number, string> = {
@@ -135,7 +135,7 @@ export function RankingsPage() {
       <div style={{ marginBottom: '0.5cm' }}>
         <div className="print-header" style={{ textAlign: 'center', marginBottom: '0.3cm' }}>
           <h1 className="print-main-title" style={{ color: 'black', fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
-            Mr & Ms Teen Tabulation
+            MR & MS TEEN 2025
           </h1>
           <h2 className="print-category-title" style={{ color: 'black', fontSize: '14px', fontWeight: 'bold', margin: '0.2cm 0' }}>
             Overall Ranking - <span style={{ textTransform: 'uppercase' }}>{label}</span>

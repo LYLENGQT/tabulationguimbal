@@ -211,7 +211,7 @@ export function LiveDisplayPage() {
           <div className="inline-flex items-center gap-3 mb-4">
             <Trophy className={`h-10 w-10 ${division === 'male' ? 'text-sky-400' : 'text-rose-400'}`} />
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold tracking-tight">
-              {division === 'male' ? 'MR TEEN' : 'MS TEEN'} GUIMBAL
+              {division === 'male' ? 'MR TEEN' : 'MS TEEN'} 2025
             </h1>
             <Trophy className={`h-10 w-10 ${division === 'male' ? 'text-sky-400' : 'text-rose-400'}`} />
           </div>
@@ -272,7 +272,7 @@ export function LiveDisplayPage() {
                             </div>
                             {rank <= 3 && (
                               <p className="text-slate-400 mt-1">
-                                {rank <= 1 ? (division === 'male' ? 'Mr Teen' : 'Ms Teen') :
+                                {rank <= 1 ? (division === 'male' ? 'MR TEEN 2025' : 'MS TEEN 2025') :
                                  rank <= 2 ? '1st Runner Up' : '2nd Runner Up'}
                               </p>
                             )}

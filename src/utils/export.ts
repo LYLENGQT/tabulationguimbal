@@ -47,7 +47,7 @@ export const sheetsToCSV = (sheets: RankingExportSheet[]) => {
     // Add title header
     sections.push('\n');
     sections.push('Disyembre sa Guimbal 2025');
-    sections.push(division === 'male' ? 'MR TEEN GUIMBAL' : 'MS TEEN GUIMBAL');
+    sections.push(division === 'male' ? 'MR TEEN 2025' : 'MS TEEN 2025');
     sections.push(category);
     sections.push('');
     sections.push(toCsv(sheet.rows));
@@ -125,7 +125,7 @@ export const downloadXlsxMultiSheet = (filename: string, sheets: RankingExportSh
     // Create title rows
     const titleRows = [
       { title: 'Disyembre sa Guimbal 2025' },
-      { title: division === 'male' ? 'MR TEEN GUIMBAL' : 'MS TEEN GUIMBAL' },
+      { title: division === 'male' ? 'MR TEEN 2025' : 'MS TEEN 2025' },
       { title: category },
       {} // Empty row before data
     ];
@@ -142,7 +142,7 @@ export const downloadXlsxMultiSheet = (filename: string, sheets: RankingExportSh
       alignment: { horizontal: 'center', vertical: 'center' }
     }};
     
-    // Row 1: "MR TEEN GUIMBAL" or "MS TEEN GUIMBAL"
+    // Row 1: "MR TEEN 2025" or "MS TEEN 2025"
     ws['A2'] = { v: titleRows[1].title, t: 's', s: {
       font: { bold: true, sz: 12 },
       alignment: { horizontal: 'center', vertical: 'center' }

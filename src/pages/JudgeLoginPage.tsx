@@ -115,7 +115,7 @@ export function JudgeLoginPage() {
         >
           <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-slate-200 bg-white/80 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium text-slate-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
             <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
-            Live Tabulation for Mr & Ms Teen 2025
+            Live Tabulation for MR & MS TEEN 2025
           </div>
           <h1 className="mt-3 sm:mt-4 text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-semibold leading-tight text-slate-900 dark:text-white">
             Modern online tabulation built for judges, admins, and schools.

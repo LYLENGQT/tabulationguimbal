@@ -1602,7 +1602,7 @@ function ScoringSummarySection() {
       <div style={{ marginBottom: '0.5cm' }}>
         <div className="print-header" style={{ textAlign: 'center', marginBottom: '0.3cm' }}>
           <h1 className="print-main-title" style={{ color: 'black', fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
-            Mr & Ms Teen Tabulation
+            MR & MS TEEN 2025
           </h1>
           <h2 className="print-category-title" style={{ color: 'black', fontSize: '14px', fontWeight: 'bold', margin: '0.2cm 0' }}>
             {summary.categoryLabel} - <span style={{ textTransform: 'uppercase' }}>{label}</span>
@@ -1811,7 +1811,7 @@ function ScoringSummarySection() {
       <div style={{ marginBottom: '0.5cm' }}>
         <div className="print-header" style={{ textAlign: 'center', marginBottom: '0.3cm' }}>
           <h1 className="print-main-title" style={{ color: 'black', fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
-            Mr & Ms Teen Tabulation
+            MR & MS TEEN 2025
           </h1>
           <h2 className="print-category-title" style={{ color: 'black', fontSize: '14px', fontWeight: 'bold', margin: '0.2cm 0' }}>
             OVERALL RANKINGS - <span style={{ textTransform: 'uppercase' }}>{label}</span>
