@@ -8,6 +8,7 @@ import {
   Award,
   Download,
   Lock,
+  Loader2,
   Printer,
   ShieldCheck,
   Unlock,
@@ -1935,7 +1936,7 @@ function ScoringSummarySection() {
         (isOverallView && (overallMaleQuery.isLoading || overallFemaleQuery.isLoading))) && (
         <Card className="border border-slate-200 bg-white p-4 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-center gap-2 sm:gap-3">
-            <div className="h-4 w-4 sm:h-5 sm:w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900 dark:border-slate-600 dark:border-t-white" />
+            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
             <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">
               {isOverallView ? 'Loading overall rankings...' : 'Loading scores...'}
             </p>

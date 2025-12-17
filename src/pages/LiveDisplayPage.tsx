@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, Trophy, Medal, Sparkles, Monitor, MonitorOff } from 'lucide-react';
+import { Crown, Trophy, Medal, Sparkles, Monitor, MonitorOff, Loader2 } from 'lucide-react';
 import { fetchOverallRankings, fetchCategoryRankings } from '../services/supabaseApi';
 import type { Division, CategorySlug } from '../types/scoring';
 import { CATEGORY_CONFIG } from '../constants/scoring';
@@ -98,6 +98,7 @@ export function LiveDisplayPage() {
   });
 
   const rows = viewMode === 'overall' ? overallQuery.data : categoryQuery.data;
+  const isLoading = viewMode === 'overall' ? overallQuery.isLoading : categoryQuery.isLoading;
   const categoryLabel = CATEGORY_CONFIG.find(c => c.slug === selectedCategory)?.label || '';
 
   return (
@@ -226,7 +227,21 @@ export function LiveDisplayPage() {
         {/* Rankings Grid */}
         <div className="w-full max-w-5xl">
           <AnimatePresence mode="popLayout">
-            {rows && rows.length > 0 ? (
+            {isLoading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center justify-center py-20"
+              >
+                <div className="relative">
+                  <Loader2 className="h-16 w-16 animate-spin text-amber-400" />
+                  <Sparkles className="absolute -top-2 -right-2 h-6 w-6 text-amber-300 animate-pulse" />
+                </div>
+                <p className="text-xl text-slate-400 mt-6 animate-pulse">Loading rankings...</p>
+              </motion.div>
+            ) : rows && rows.length > 0 ? (
               <motion.div
                 key={`grid-${division}-${viewMode}-${selectedCategory}`}
                 initial={{ opacity: 0 }}

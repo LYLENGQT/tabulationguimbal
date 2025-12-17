@@ -11,10 +11,12 @@ import {
   Medal,
   Minus,
   BarChart3,
-  Zap
+  Zap,
+  Loader2
 } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
+import { LoadingSpinner, CardSkeleton } from '../components/LoadingSpinner';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import {
@@ -137,8 +139,17 @@ export function ContestantInsightsPage() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {insightsQuery.isLoading && (
+          <LoadingSpinner 
+            size="lg" 
+            text="Loading contestant insights..." 
+            fullPage 
+          />
+        )}
+
         {/* Quick Stats */}
-        {insights.length > 0 && (
+        {!insightsQuery.isLoading && insights.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {topPerformers.topRanked && (
               <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 dark:border-amber-800 dark:from-amber-950/30 dark:to-amber-900/20">
@@ -198,7 +209,7 @@ export function ContestantInsightsPage() {
         )}
 
         {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        {!insightsQuery.isLoading && <div className="grid gap-6 lg:grid-cols-3">
           {/* Contestant List */}
           <Card className="lg:col-span-1 border-slate-200 dark:border-slate-700">
             <CardHeader className="pb-2">
@@ -383,7 +394,7 @@ export function ContestantInsightsPage() {
               )}
             </CardContent>
           </Card>
-        </div>
+        </div>}
 
         {/* Head-to-Head Comparison */}
         <Card className="border-slate-200 dark:border-slate-700">
@@ -426,7 +437,12 @@ export function ContestantInsightsPage() {
               </Select>
             </div>
 
-            {headToHead ? (
+            {headToHeadQuery.isLoading && compareContestant1 && compareContestant2 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-slate-400 mb-3" />
+                <p className="text-slate-500 dark:text-slate-400">Loading comparison...</p>
+              </div>
+            ) : headToHead ? (
               <div className="space-y-4">
                 {/* Overall Comparison */}
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -519,11 +535,7 @@ export function ContestantInsightsPage() {
               </div>
             ) : (
               <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                {compareContestant1 && compareContestant2 ? (
-                  <p>Loading comparison...</p>
-                ) : (
-                  <p>Select two contestants to compare their performance</p>
-                )}
+                <p>Select two contestants to compare their performance</p>
               </div>
             )}
           </CardContent>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Crown, Medal, Printer, Sparkles, Trophy } from 'lucide-react';
+import { Medal, Printer, Trophy, Loader2, RefreshCw } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
 import {
@@ -25,16 +25,6 @@ const highlightClassForRank = (rank: number) => {
 const formatRank = (rank: number) => {
   return rank % 1 !== 0 ? rank.toFixed(1) : rank.toString();
 };
-
-const logoModules = import.meta.glob('../../logos/*.{jpg,jpeg,png,webp}', {
-  eager: true,
-  as: 'url'
-});
-
-const SCHOOL_LOGOS = Object.entries(logoModules).map(([path, src]) => {
-  const filename = path.split('/').pop()?.replace(/\.[^/.]+$/, '') ?? '';
-  return { name: filename, src };
-});
 
 export function RankingsPage() {
   const [selectedCategorySlug, setSelectedCategorySlug] =
@@ -132,7 +122,7 @@ export function RankingsPage() {
     if (!rows || rows.length === 0) return null;
     const division = label.toLowerCase();
     return (
-      <div style={{ marginBottom: '0.5cm' }}>
+      <div style={{ marginBottom: '1.5cm', pageBreakInside: 'avoid' }}>
         <div className="print-header" style={{ textAlign: 'center', marginBottom: '0.3cm' }}>
           <h1 className="print-main-title" style={{ color: 'black', fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
             MR & MS TEEN 2025
@@ -182,6 +172,30 @@ export function RankingsPage() {
             </tbody>
           </table>
         </div>
+        
+        {/* Signatories Section */}
+        <div style={{ marginTop: '1cm' }}>
+          <p style={{ color: 'black', fontSize: '11px', fontWeight: 'bold', marginBottom: '0.5cm', textAlign: 'center' }}>
+            Certified Correct:
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1cm' }}>
+            {[1, 2, 3].map((num) => (
+              <div key={num} style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ 
+                  borderBottom: '1px solid black', 
+                  marginBottom: '4px',
+                  minHeight: '30px'
+                }} />
+                <p style={{ color: 'black', fontSize: '10px', fontWeight: 'bold', margin: 0 }}>
+                  JUDGE {num}
+                </p>
+                <p style={{ color: 'black', fontSize: '9px', margin: 0 }}>
+                  Signature over Printed Name
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   };
@@ -210,73 +224,35 @@ export function RankingsPage() {
         </Link>
       }
     >
-      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-        <section className="overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200/80 bg-gradient-to-r from-white via-slate-50 to-slate-100 p-3 sm:p-4 lg:p-6 shadow-sm dark:border-white/10 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-950">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-            <div className="space-y-1.5 sm:space-y-2">
-              <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-slate-900 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white shadow-sm dark:bg-white dark:text-slate-900">
-                <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
-                Live Rankings
-              </div>
-              <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white">
-                Real-time placements with visual highlights for the top scorers.
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-                Totals refresh automatically. Top 3 placements are emphasized for quick visibility.
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border border-slate-200 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-200 flex-shrink-0">
-              <Crown className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
-              <span className="hidden sm:inline">Overall + per-category standings</span>
-              <span className="sm:hidden">All standings</span>
-            </div>
-          </div>
-
-          <div className="mt-4 sm:mt-6">
-            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] sm:tracking-[0.25em] text-slate-500 dark:text-slate-400">
-              Participating Schools
-            </p>
-            <div className="mt-2 sm:mt-3 grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border border-slate-200 bg-white/70 p-2 sm:p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-              {SCHOOL_LOGOS.map((logo) => (
-                <div
-                  key={logo.name}
-                  className="flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl bg-white px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10"
-                >
-                  <img
-                    src={logo.src}
-                    alt={logo.name}
-                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-md sm:rounded-lg object-cover ring-1 ring-slate-200 dark:ring-white/10 flex-shrink-0"
-                  />
-                  <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{logo.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
+      <div className="space-y-4 sm:space-y-6">
+        {/* Overall Rankings Section */}
         <section className={printMode ? 'space-y-4 sm:space-y-6 printing' : 'rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white/90 p-3 sm:p-4 lg:p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80'}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-            <div>
-              <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-slate-900 dark:text-white">Overall Ranking (Ranking Method)</h2>
-              <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
-                Lowest total points wins. Rank 1 = 1 pt, Rank 2 = 2 pts, etc.
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25">
+                <Trophy className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-slate-900 dark:text-white">Overall Rankings</h2>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+                  Lowest points wins • Updates every 5s
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] sm:text-xs font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                <RefreshCw className="h-3 w-3 animate-spin" style={{ animationDuration: '3s' }} />
+                <span>Live</span>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePrint}
-                className="h-8 sm:h-9 rounded-lg border border-slate-200 bg-white px-2 sm:px-4 text-xs sm:text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                className="h-8 sm:h-9 rounded-lg border border-slate-200 bg-white px-2 sm:px-4 text-xs sm:text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
               >
                 <Printer className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Print</span>
               </Button>
-              <div className="flex items-center gap-1 sm:gap-2 rounded-full bg-slate-100 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-200">
-                <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
-                <span className="hidden sm:inline">Auto-refreshing</span>
-                <span className="sm:hidden">Live</span>
-              </div>
             </div>
           </div>
           {printMode &&
@@ -312,7 +288,16 @@ export function RankingsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/30">
-                      {rows && rows.length > 0 ? (
+                      {title === 'Male Division' && maleOverall.isLoading || title === 'Female Division' && femaleOverall.isLoading ? (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-8">
+                            <div className="flex items-center justify-center gap-2">
+                              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                              <span className="text-sm text-slate-500">Loading...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : rows && rows.length > 0 ? (
                         rows.map((row, idx) => {
                           const cls = highlightClassForRank(row.final_placement);
                           const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/40';
@@ -346,23 +331,33 @@ export function RankingsPage() {
           )}
         </section>
 
+        {/* Per-Category Rankings Section */}
         <section className="space-y-3 sm:space-y-4 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white/90 p-3 sm:p-4 lg:p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-            <div>
-              <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-slate-900 dark:text-white">Per-Category Rankings</h2>
-              <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
-                Sum of per-judge ranks. Lower total = better placement. Top 3 highlighted.
-              </p>
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25">
+                  <Medal className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-slate-900 dark:text-white">Category Rankings</h2>
+                  <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+                    Select a category to view rankings
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-1 sm:pb-0">
+            
+            {/* Category Pills */}
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {CATEGORY_CONFIG.map((cat) => (
                 <button
                   key={cat.slug}
                   onClick={() => setSelectedCategorySlug(cat.slug)}
-                  className={`rounded-full border px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold transition whitespace-nowrap flex-shrink-0 ${
+                  className={`rounded-lg border px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold transition whitespace-nowrap ${
                     selectedCategorySlug === cat.slug
-                      ? 'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-white dark:bg-white dark:text-slate-900'
-                      : 'border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-white/10 dark:text-slate-200 dark:hover:border-white/40'
+                      ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm dark:border-emerald-400 dark:bg-emerald-500'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-400'
                   }`}
                 >
                   {cat.label}
@@ -394,7 +389,16 @@ export function RankingsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-950/30">
-                      {rows && rows.length > 0 ? (
+                      {title.includes('Male') && maleCategory.isLoading || title.includes('Female') && femaleCategory.isLoading ? (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-8">
+                            <div className="flex items-center justify-center gap-2">
+                              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                              <span className="text-sm text-slate-500">Loading...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : rows && rows.length > 0 ? (
                         rows.map((row, idx) => {
                           const cls = highlightClassForRank(row.rank);
                           const zebra = idx % 2 === 0 ? 'bg-white/80 dark:bg-white/5' : 'bg-slate-50 dark:bg-slate-950/40';

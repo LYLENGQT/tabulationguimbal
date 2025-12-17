@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Crown, LineChart, LogOut, Clock, Menu, X } from 'lucide-react';
+import { Crown, LineChart, LogOut, Clock, Menu, X, BarChart3, Monitor } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -18,6 +18,8 @@ type Props = {
 
 const NAV_ITEMS = [
   { label: 'Rankings', href: '/rankings', icon: LineChart },
+  { label: 'Insights', href: '/insights', icon: BarChart3, adminOnly: true },
+  { label: 'Live', href: '/live', icon: Monitor, newTab: true },
   { label: 'Admin', href: '/admin', icon: Crown }
 ];
 
@@ -37,9 +39,12 @@ export function AppShell({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const filteredNav = NAV_ITEMS.filter((item) =>
-    item.label === 'Admin' ? showAdminLink : showRankingsLink
-  );
+  const filteredNav = NAV_ITEMS.filter((item) => {
+    if (item.label === 'Admin') return showAdminLink;
+    if (item.adminOnly) return showAdminLink;
+    if (item.label === 'Rankings') return showRankingsLink;
+    return true; // Show other items (like Live) to everyone
+  });
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -167,7 +172,12 @@ export function AppShell({
               const isActive = location.pathname === item.href;
               const Icon = item.icon;
               return (
-                <Link key={item.href} to={item.href}>
+                <Link 
+                  key={item.href} 
+                  to={item.href}
+                  target={item.newTab ? '_blank' : undefined}
+                  rel={item.newTab ? 'noopener noreferrer' : undefined}
+                >
                   <Button
                     variant={isActive ? 'default' : 'ghost'}
                     size="sm"
@@ -264,7 +274,13 @@ export function AppShell({
                       const isActive = location.pathname === item.href;
                       const Icon = item.icon;
                       return (
-                        <Link key={item.href} to={item.href} onClick={() => setMobileMenuOpen(false)}>
+                        <Link 
+                          key={item.href} 
+                          to={item.href} 
+                          onClick={() => setMobileMenuOpen(false)}
+                          target={item.newTab ? '_blank' : undefined}
+                          rel={item.newTab ? 'noopener noreferrer' : undefined}
+                        >
                           <div
                             className={cn(
                               'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors',

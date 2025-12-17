@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ClipboardCheck, Crown, Info, Lock, Save } from 'lucide-react';
+import { ClipboardCheck, Crown, Info, Lock, Loader2, Save } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -179,7 +179,10 @@ export function JudgeScoringPage() {
   return (
     <AppShell title="Judge Scoring Panel" showAdminLink={false} fullWidth={true}>
       {judgeQuery.isLoading ? (
-        <p className="text-sm text-slate-600 dark:text-slate-400">Loading judge profile…</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-slate-400" />
+          <p className="text-sm text-slate-600 dark:text-slate-400 animate-pulse">Loading judge profile…</p>
+        </div>
       ) : !judge ? (
         <p className="text-sm text-rose-600 dark:text-rose-300">
           No judge profile was found for this account. Please contact the administrative team.
