@@ -344,3 +344,4 @@ export function LiveDisplayPage() {
     </div>
   );
 }
+

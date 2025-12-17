@@ -156,11 +156,17 @@ export function JudgeScoringPage() {
         ) ?? []
       : []);
 
+  // Auto-select the first category (Production Number) when categories load
+  // This ensures judges can start scoring immediately without clicking
   useEffect(() => {
-    if (!selectedCategoryId && categories.length) {
-      setSelectedCategoryId(categories[0].id);
+    if (categoriesQuery.data && categoriesQuery.data.length > 0) {
+      // Only auto-select if no category is selected OR if the current selection is invalid
+      const currentSelectionValid = categoriesQuery.data.some(cat => cat.id === selectedCategoryId);
+      if (!selectedCategoryId || !currentSelectionValid) {
+        setSelectedCategoryId(categoriesQuery.data[0].id);
+      }
     }
-  }, [categories, selectedCategoryId]);
+  }, [categoriesQuery.data, selectedCategoryId]);
 
   useEffect(() => {
     if (!scoresSheetQuery.data) return;

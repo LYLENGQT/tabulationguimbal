@@ -1574,7 +1574,7 @@ function ScoringSummarySection() {
     }
     
     return (
-      <div style={{ marginBottom: '0.5cm' }}>
+      <div style={{ marginBottom: '1.5cm', pageBreakInside: 'avoid' }}>
         <div className="print-header" style={{ textAlign: 'center', marginBottom: '0.3cm' }}>
           <h1 className="print-main-title" style={{ color: 'black', fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
             MR & MS TEEN 2025
@@ -1655,6 +1655,31 @@ function ScoringSummarySection() {
               })}
             </tbody>
           </table>
+        </div>
+        
+        {/* Signatories Section */}
+        <div style={{ marginTop: '1cm' }}>
+          <p style={{ color: 'black', fontSize: '11px', fontWeight: 'bold', marginBottom: '0.5cm', textAlign: 'center' }}>
+            Certified Correct:
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1cm' }}>
+            {[1, 2, 3].map((num) => (
+              <div key={num} style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{
+                  borderBottom: '1px solid black',
+                  width: '100%',
+                  marginBottom: '4px',
+                  height: '30px'
+                }} />
+                <p style={{ color: 'black', fontSize: '10px', fontWeight: 'bold', margin: 0 }}>
+                  JUDGE {num}
+                </p>
+                <p style={{ color: 'black', fontSize: '9px', margin: 0 }}>
+                  Signature over Printed Name
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -1927,6 +1952,11 @@ function ScoringSummarySection() {
       {printMode && !isOverallView &&
         createPortal(
           <div className="print-mode" style={{ padding: '0.5cm' }}>
+            <div className="print-watermark">
+              <span className="print-watermark-text">BY</span>
+              <span className="print-watermark-divider"></span>
+              <span className="print-watermark-text">CODEWITHLYLE</span>
+            </div>
             {renderPrintTable('male', summaryMale)}
             {renderPrintTable('female', summaryFemale)}
           </div>,
@@ -1936,6 +1966,11 @@ function ScoringSummarySection() {
       {printMode && isOverallView &&
         createPortal(
           <div className="print-mode" style={{ padding: '0.5cm' }}>
+            <div className="print-watermark">
+              <span className="print-watermark-text">BY</span>
+              <span className="print-watermark-divider"></span>
+              <span className="print-watermark-text">CODEWITHLYLE</span>
+            </div>
             {renderOverallPrintTable('male', overallMaleQuery.data, allCategoryRankingsMaleQuery.data)}
             {renderOverallPrintTable('female', overallFemaleQuery.data, allCategoryRankingsFemaleQuery.data)}
           </div>,

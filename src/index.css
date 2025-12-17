@@ -490,5 +490,41 @@ html, body {
     height: 100vh !important;
     max-height: 100vh !important;
   }
+
+  /* Watermark styles */
+  .print-watermark {
+    position: fixed !important;
+    bottom: 0.5cm !important;
+    right: 0.5cm !important;
+    pointer-events: none !important;
+    z-index: 9999 !important;
+    white-space: nowrap !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    opacity: 0.5 !important;
+  }
+
+  .print-watermark-text {
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    font-family: 'Poppins', sans-serif !important;
+    color: #666666 !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    display: inline !important;
+    visibility: visible !important;
+  }
+
+  .print-watermark-divider {
+    width: 1px !important;
+    height: 8px !important;
+    background: #999999 !important;
+    display: inline-block !important;
+    visibility: visible !important;
+  }
 }
 

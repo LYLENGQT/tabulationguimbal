@@ -250,3 +250,4 @@ export function ProgressTracker({ compact = false, refreshInterval = 5000 }: Pro
     </div>
   );
 }
+

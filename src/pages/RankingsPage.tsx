@@ -258,6 +258,11 @@ export function RankingsPage() {
           {printMode &&
             createPortal(
               <div className="print-mode" style={{ padding: '0.5cm' }}>
+                <div className="print-watermark">
+                  <span className="print-watermark-text">BY</span>
+                  <span className="print-watermark-divider"></span>
+                  <span className="print-watermark-text">CODEWITHLYLE</span>
+                </div>
                 {renderPrintTable('male', maleOverall.data)}
                 {renderPrintTable('female', femaleOverall.data)}
               </div>,

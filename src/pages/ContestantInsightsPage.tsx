@@ -544,3 +544,4 @@ export function ContestantInsightsPage() {
     </AppShell>
   );
 }
+

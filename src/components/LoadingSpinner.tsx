@@ -82,3 +82,4 @@ export function CardSkeleton({ className }: { className?: string }) {
     </div>
   );
 }
+
