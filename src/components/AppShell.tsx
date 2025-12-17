@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Crown, LineChart, LogOut, Clock, Menu, X, BarChart3, Monitor } from 'lucide-react';
+import { Crown, LineChart, LogOut, Clock, Menu, X, BarChart3, Monitor, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -18,6 +18,7 @@ type Props = {
 
 const NAV_ITEMS = [
   { label: 'Rankings', href: '/rankings', icon: LineChart },
+  { label: 'Summary', href: '/admin?view=scoring-summary', icon: ClipboardList, adminOnly: true },
   { label: 'Insights', href: '/insights', icon: BarChart3, adminOnly: true },
   { label: 'Live', href: '/live', icon: Monitor, newTab: true },
   { label: 'Admin', href: '/admin', icon: Crown }

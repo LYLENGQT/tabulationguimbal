@@ -16,12 +16,9 @@ import {
   Users,
   LayoutDashboard,
   FileText,
-  Gavel,
-  BarChart3,
-  Monitor,
-  ExternalLink
+  Gavel
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -86,8 +83,17 @@ const judgeSchema = z.object({
 
 export function AdminDashboardPage() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [activeView, setActiveView] = useState<'overview' | 'contestants' | 'judges' | 'scoring-summary'>('overview');
   const [editingJudgeId, setEditingJudgeId] = useState<string | null>(null);
+
+  // Handle URL query parameter for direct navigation to views
+  useEffect(() => {
+    const viewParam = searchParams.get('view');
+    if (viewParam === 'scoring-summary' || viewParam === 'judges' || viewParam === 'contestants') {
+      setActiveView(viewParam);
+    }
+  }, [searchParams]);
   const [editingValues, setEditingValues] = useState<{
     full_name: string;
     email: string;
@@ -550,38 +556,6 @@ export function AdminDashboardPage() {
                   </CardContent>
                 </Card>
               )}
-
-              {/* Quick Links to Analytics */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Link to="/insights">
-                  <Card className="border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
-                        <BarChart3 className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-slate-900 dark:text-white">Contestant Insights</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Analytics & comparisons</p>
-                      </div>
-                      <ExternalLink className="h-4 w-4 text-slate-400" />
-                    </div>
-                  </Card>
-                </Link>
-                <Link to="/live" target="_blank">
-                  <Card className="border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
-                        <Monitor className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-slate-900 dark:text-white">Live Display</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Projector mode for audience</p>
-                      </div>
-                      <ExternalLink className="h-4 w-4 text-slate-400" />
-                    </div>
-                  </Card>
-                </Link>
-              </div>
 
               {/* Progress Tracker and Activity Feed */}
               <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
