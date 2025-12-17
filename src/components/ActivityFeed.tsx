@@ -10,6 +10,7 @@ interface ActivityFeedProps {
   maxHeight?: string;
   onClear?: () => void;
   clearing?: boolean;
+  className?: string;
 }
 
 const actionIcons: Record<ActivityLog['action_type'], typeof Activity> = {
@@ -50,17 +51,17 @@ const formatActionLabel = (action: ActivityLog['action_type']) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
-export function ActivityFeed({ activities, maxHeight = '70vh', onClear, clearing }: ActivityFeedProps) {
+export function ActivityFeed({ activities, maxHeight = '70vh', onClear, clearing, className }: ActivityFeedProps) {
   if (activities.length === 0) {
     return (
-      <Card>
+      <Card className={`flex flex-col ${className || ''}`}>
         <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
           <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
             <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
             Activity Feed
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
+        <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6 flex-1 flex items-center justify-center">
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center py-4 sm:py-8">
             No activities yet. Activity will appear here as judges submit scores.
           </p>
@@ -70,7 +71,7 @@ export function ActivityFeed({ activities, maxHeight = '70vh', onClear, clearing
   }
 
   return (
-    <Card>
+    <Card className={`flex flex-col ${className || ''}`}>
       <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-2">
           <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
@@ -94,9 +95,9 @@ export function ActivityFeed({ activities, maxHeight = '70vh', onClear, clearing
           )}
         </div>
       </CardHeader>
-      <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
+      <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6 flex-1 overflow-hidden">
         <ScrollArea
-          className="pr-1 sm:pr-2 max-h-[50vh] sm:max-h-[70vh] activity-scrollbar"
+          className="pr-1 sm:pr-2 h-full activity-scrollbar"
           style={{ maxHeight, overflowY: 'auto' }}
         >
           <div className="space-y-2 sm:space-y-3">

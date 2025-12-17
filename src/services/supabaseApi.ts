@@ -1357,4 +1357,339 @@ export const fetchJudgesWithStatus = async (): Promise<(Judge & { last_active?: 
   return data as (Judge & { last_active?: string })[];
 };
 
+// ==========================================
+// PROGRESS TRACKING
+// ==========================================
+
+export interface ScoringProgress {
+  totalExpected: number;
+  totalSubmitted: number;
+  percentComplete: number;
+  byJudge: {
+    judgeId: string;
+    judgeName: string;
+    division: Division;
+    submitted: number;
+    expected: number;
+    percentComplete: number;
+    lockedCount: number;
+  }[];
+  byCategory: {
+    categoryId: string;
+    categoryLabel: string;
+    submitted: number;
+    expected: number;
+    percentComplete: number;
+  }[];
+  waitingOn: {
+    judgeId: string;
+    judgeName: string;
+    division: Division;
+    pendingCategories: string[];
+  }[];
+}
+
+export const fetchScoringProgress = async (): Promise<ScoringProgress> => {
+  // Fetch all necessary data in parallel
+  const [judgesResult, contestantsResult, categoriesResult, criteriaResult, scoresResult, locksResult] = await Promise.all([
+    supabase.from('judges').select('id, full_name, division').eq('is_active', true),
+    supabase.from('contestants').select('id, division').eq('is_active', true),
+    supabase.from('categories').select('id, label, slug').eq('is_active', true),
+    supabase.from('criteria').select('id, category_id'),
+    supabase.from('scores').select('judge_id, contestant_id, category_id, criterion_id'),
+    supabase.from('judge_category_locks').select('judge_id, category_id, contestant_id')
+  ]);
+
+  const judges = judgesResult.data || [];
+  const contestants = contestantsResult.data || [];
+  const categories = categoriesResult.data || [];
+  const criteria = criteriaResult.data || [];
+  const scores = scoresResult.data || [];
+  const locks = locksResult.data || [];
+
+  // Group contestants by division
+  const maleContestants = contestants.filter(c => c.division === 'male');
+  const femaleContestants = contestants.filter(c => c.division === 'female');
+
+  // Count criteria per category
+  const criteriaPerCategory = new Map<string, number>();
+  criteria.forEach(c => {
+    criteriaPerCategory.set(c.category_id, (criteriaPerCategory.get(c.category_id) || 0) + 1);
+  });
+
+  // Calculate expected scores per judge (judge scores contestants in their division)
+  const byJudge: ScoringProgress['byJudge'] = [];
+  const waitingOn: ScoringProgress['waitingOn'] = [];
+
+  judges.forEach(judge => {
+    const divisionContestants = judge.division === 'male' ? maleContestants : femaleContestants;
+    
+    // Expected = contestants × categories × criteria per category
+    let expected = 0;
+    categories.forEach(cat => {
+      expected += divisionContestants.length * (criteriaPerCategory.get(cat.id) || 0);
+    });
+
+    // Submitted = actual scores from this judge
+    const submitted = scores.filter(s => s.judge_id === judge.id).length;
+    const lockedCount = locks.filter(l => l.judge_id === judge.id).length;
+
+    byJudge.push({
+      judgeId: judge.id,
+      judgeName: judge.full_name,
+      division: judge.division as Division,
+      submitted,
+      expected,
+      percentComplete: expected > 0 ? Math.round((submitted / expected) * 100) : 0,
+      lockedCount
+    });
+
+    // Determine pending categories
+    const pendingCategories: string[] = [];
+    categories.forEach(cat => {
+      const expectedForCategory = divisionContestants.length * (criteriaPerCategory.get(cat.id) || 0);
+      const submittedForCategory = scores.filter(
+        s => s.judge_id === judge.id && s.category_id === cat.id
+      ).length;
+      if (submittedForCategory < expectedForCategory) {
+        pendingCategories.push(cat.label);
+      }
+    });
+
+    if (pendingCategories.length > 0) {
+      waitingOn.push({
+        judgeId: judge.id,
+        judgeName: judge.full_name,
+        division: judge.division as Division,
+        pendingCategories
+      });
+    }
+  });
+
+  // Calculate by category
+  const byCategory: ScoringProgress['byCategory'] = [];
+  categories.forEach(cat => {
+    const criteriaCount = criteriaPerCategory.get(cat.id) || 0;
+    // For each category, all judges score all their division's contestants
+    let expected = 0;
+    judges.forEach(judge => {
+      const divisionContestants = judge.division === 'male' ? maleContestants : femaleContestants;
+      expected += divisionContestants.length * criteriaCount;
+    });
+    
+    const submitted = scores.filter(s => s.category_id === cat.id).length;
+
+    byCategory.push({
+      categoryId: cat.id,
+      categoryLabel: cat.label,
+      submitted,
+      expected,
+      percentComplete: expected > 0 ? Math.round((submitted / expected) * 100) : 0
+    });
+  });
+
+  // Calculate totals
+  const totalExpected = byJudge.reduce((sum, j) => sum + j.expected, 0);
+  const totalSubmitted = byJudge.reduce((sum, j) => sum + j.submitted, 0);
+
+  return {
+    totalExpected,
+    totalSubmitted,
+    percentComplete: totalExpected > 0 ? Math.round((totalSubmitted / totalExpected) * 100) : 0,
+    byJudge,
+    byCategory,
+    waitingOn
+  };
+};
+
+// ==========================================
+// CONTESTANT INSIGHTS
+// ==========================================
+
+export interface ContestantInsight {
+  contestantId: string;
+  contestantNumber: number;
+  division: Division;
+  categoryRanks: {
+    categorySlug: string;
+    categoryLabel: string;
+    rank: number;
+    totalPoints: number;
+    isStrongest: boolean;
+    isWeakest: boolean;
+  }[];
+  overallRank: number;
+  overallPoints: number;
+  gapToLeader: number;
+  strongestCategory: string;
+  weakestCategory: string;
+  rankProgression: number[]; // ranks across categories in order
+  averageRank: number;
+  consistency: number; // standard deviation of ranks
+}
+
+export const fetchContestantInsights = async (division: Division): Promise<ContestantInsight[]> => {
+  // Get all categories
+  const { data: categories } = await supabase
+    .from('categories')
+    .select('id, label, slug, sort_order')
+    .eq('is_active', true)
+    .order('sort_order');
+  
+  if (!categories || categories.length === 0) return [];
+
+  // Fetch overall rankings
+  const overallRankings = await fetchOverallRankings(division);
+  if (overallRankings.length === 0) return [];
+
+  // Find leader's points
+  const leaderPoints = Math.min(...overallRankings.map(r => r.total_points));
+
+  // Fetch category rankings for each category
+  const categoryRankingsMap = new Map<string, CategoryRankingRow[]>();
+  for (const cat of categories) {
+    const catRankings = await fetchCategoryRankings(division, cat.slug);
+    categoryRankingsMap.set(cat.slug, catRankings);
+  }
+
+  // Build insights for each contestant
+  const insights: ContestantInsight[] = overallRankings.map(contestant => {
+    const categoryRanks: ContestantInsight['categoryRanks'] = [];
+    const rankProgression: number[] = [];
+
+    categories.forEach(cat => {
+      const catRankings = categoryRankingsMap.get(cat.slug) || [];
+      const contestantRanking = catRankings.find(r => r.contestant_id === contestant.contestant_id);
+      
+      if (contestantRanking) {
+        categoryRanks.push({
+          categorySlug: cat.slug,
+          categoryLabel: cat.label,
+          rank: contestantRanking.rank,
+          totalPoints: contestantRanking.category_score,
+          isStrongest: false,
+          isWeakest: false
+        });
+        rankProgression.push(contestantRanking.rank);
+      }
+    });
+
+    // Determine strongest and weakest categories
+    if (categoryRanks.length > 0) {
+      const minRank = Math.min(...categoryRanks.map(c => c.rank));
+      const maxRank = Math.max(...categoryRanks.map(c => c.rank));
+      
+      categoryRanks.forEach(c => {
+        if (c.rank === minRank) c.isStrongest = true;
+        if (c.rank === maxRank) c.isWeakest = true;
+      });
+    }
+
+    const strongestCategory = categoryRanks.find(c => c.isStrongest)?.categoryLabel || '-';
+    const weakestCategory = categoryRanks.find(c => c.isWeakest)?.categoryLabel || '-';
+
+    // Calculate average rank and consistency
+    const avgRank = rankProgression.length > 0 
+      ? rankProgression.reduce((a, b) => a + b, 0) / rankProgression.length 
+      : 0;
+    
+    // Standard deviation for consistency
+    const variance = rankProgression.length > 0
+      ? rankProgression.reduce((sum, r) => sum + Math.pow(r - avgRank, 2), 0) / rankProgression.length
+      : 0;
+    const consistency = Math.sqrt(variance);
+
+    return {
+      contestantId: contestant.contestant_id,
+      contestantNumber: contestant.number,
+      division,
+      categoryRanks,
+      overallRank: contestant.final_placement,
+      overallPoints: contestant.total_points,
+      gapToLeader: contestant.total_points - leaderPoints,
+      strongestCategory,
+      weakestCategory,
+      rankProgression,
+      averageRank: Number(avgRank.toFixed(2)),
+      consistency: Number(consistency.toFixed(2))
+    };
+  });
+
+  return insights;
+};
+
+// ==========================================
+// HEAD-TO-HEAD COMPARISON
+// ==========================================
+
+export interface HeadToHeadComparison {
+  contestant1: {
+    id: string;
+    number: number;
+    overallRank: number;
+    overallPoints: number;
+    categoryRanks: { category: string; rank: number }[];
+  };
+  contestant2: {
+    id: string;
+    number: number;
+    overallRank: number;
+    overallPoints: number;
+    categoryRanks: { category: string; rank: number }[];
+  };
+  categoriesWonBy1: string[];
+  categoriesWonBy2: string[];
+  tiedCategories: string[];
+}
+
+export const fetchHeadToHead = async (
+  contestant1Id: string,
+  contestant2Id: string,
+  division: Division
+): Promise<HeadToHeadComparison | null> => {
+  const insights = await fetchContestantInsights(division);
+  
+  const c1 = insights.find(i => i.contestantId === contestant1Id);
+  const c2 = insights.find(i => i.contestantId === contestant2Id);
+  
+  if (!c1 || !c2) return null;
+
+  const categoriesWonBy1: string[] = [];
+  const categoriesWonBy2: string[] = [];
+  const tiedCategories: string[] = [];
+
+  c1.categoryRanks.forEach(cat => {
+    const c2Cat = c2.categoryRanks.find(c => c.categorySlug === cat.categorySlug);
+    if (!c2Cat) return;
+    
+    if (cat.rank < c2Cat.rank) {
+      categoriesWonBy1.push(cat.categoryLabel);
+    } else if (cat.rank > c2Cat.rank) {
+      categoriesWonBy2.push(cat.categoryLabel);
+    } else {
+      tiedCategories.push(cat.categoryLabel);
+    }
+  });
+
+  return {
+    contestant1: {
+      id: c1.contestantId,
+      number: c1.contestantNumber,
+      overallRank: c1.overallRank,
+      overallPoints: c1.overallPoints,
+      categoryRanks: c1.categoryRanks.map(c => ({ category: c.categoryLabel, rank: c.rank }))
+    },
+    contestant2: {
+      id: c2.contestantId,
+      number: c2.contestantNumber,
+      overallRank: c2.overallRank,
+      overallPoints: c2.overallPoints,
+      categoryRanks: c2.categoryRanks.map(c => ({ category: c.categoryLabel, rank: c.rank }))
+    },
+    categoriesWonBy1,
+    categoriesWonBy2,
+    tiedCategories
+  };
+};
+
 

@@ -15,8 +15,12 @@ import {
   Users,
   LayoutDashboard,
   FileText,
-  Gavel
+  Gavel,
+  BarChart3,
+  Monitor,
+  ExternalLink
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -50,6 +54,7 @@ import {
   updateJudgeLastActive
 } from '../services/supabaseApi';
 import { ActivityFeed } from '../components/ActivityFeed';
+import { ProgressTracker } from '../components/ProgressTracker';
 import { useRealtimeActivity } from '../hooks/useRealtimeActivity';
 import { useRealtimeScores } from '../hooks/useRealtimeScores';
 import { useBrowserNotifications } from '../hooks/useBrowserNotifications';
@@ -545,14 +550,50 @@ export function AdminDashboardPage() {
                 </Card>
               )}
 
-              {/* Activity Feed */}
-              <div className="grid gap-6">
-                <ActivityFeed
-                  activities={activities}
-                  maxHeight="70vh"
-                  onClear={() => clearActivityMutation.mutate()}
-                  clearing={clearActivityMutation.isPending}
-                />
+              {/* Quick Links to Analytics */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Link to="/insights">
+                  <Card className="border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                        <BarChart3 className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-slate-900 dark:text-white">Contestant Insights</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Analytics & comparisons</p>
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-slate-400" />
+                    </div>
+                  </Card>
+                </Link>
+                <Link to="/live" target="_blank">
+                  <Card className="border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                        <Monitor className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-slate-900 dark:text-white">Live Display</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Projector mode for audience</p>
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-slate-400" />
+                    </div>
+                  </Card>
+                </Link>
+              </div>
+
+              {/* Progress Tracker and Activity Feed */}
+              <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+                <ProgressTracker />
+                <div className="lg:sticky lg:top-4">
+                  <ActivityFeed
+                    activities={activities}
+                    maxHeight="calc(100vh - 300px)"
+                    onClear={() => clearActivityMutation.mutate()}
+                    clearing={clearActivityMutation.isPending}
+                    className="min-h-[600px]"
+                  />
+                </div>
               </div>
             </div>
           )}

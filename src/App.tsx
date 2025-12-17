@@ -4,6 +4,8 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { JudgeScoringPage } from './pages/JudgeScoringPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { RankingsPage } from './pages/RankingsPage';
+import { ContestantInsightsPage } from './pages/ContestantInsightsPage';
+import { LiveDisplayPage } from './pages/LiveDisplayPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 export default function App() {
@@ -37,6 +39,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/insights"
+          element={
+            <ProtectedRoute>
+              <ContestantInsightsPage />
+            </ProtectedRoute>
+          }
+        />
+        {/* Live Display - Public route for projector/audience display */}
+        <Route path="/live" element={<LiveDisplayPage />} />
       </Routes>
     </div>
   );
