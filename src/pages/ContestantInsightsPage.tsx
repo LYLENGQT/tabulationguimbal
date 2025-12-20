@@ -198,7 +198,7 @@ export function ContestantInsightsPage() {
                       {insights.length}
                     </p>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      {division === 'male' ? 'MR TEEN' : 'MS TEEN'} 2025
+                      {division === 'male' ? 'MR TEEN' : 'MISS TEEN'} 2025
                     </p>
                   </div>
                   <Users className="h-8 w-8 text-slate-400" />

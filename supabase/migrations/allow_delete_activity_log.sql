@@ -16,3 +16,4 @@ CREATE POLICY "Allow admin to delete activity log"
 
 
 
+

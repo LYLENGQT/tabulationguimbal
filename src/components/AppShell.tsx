@@ -129,14 +129,14 @@ export function AppShell({
             <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-900/10 dark:border-white/10 dark:bg-slate-900 flex-shrink-0">
               <img
                 src="/mrmsteenlogo.jpg"
-                alt="MR & MS TEEN 2025 logo"
+                alt="MR & MISS TEEN 2025 logo"
                 className="h-full w-full object-cover"
               />
             </div>
             <div className="flex items-center gap-4 lg:gap-12 min-w-0">
               <div className="min-w-0">
                 <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-slate-500 transition-colors group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200 truncate">
-                  MR & MS TEEN 2025
+                  MR & MISS TEEN 2025
                 </p>
                 <h1 className="text-sm sm:text-lg font-semibold text-slate-900 transition-colors group-hover:text-slate-700 dark:text-white truncate">
                   {title}

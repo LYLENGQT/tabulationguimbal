@@ -101,7 +101,7 @@ export function AdminLoginPage() {
                 <div className="mx-auto mb-3 sm:mb-4 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900">
                   <img
                     src="/mrmsteenlogo.jpg"
-                    alt="MR & MS TEEN 2025 logo"
+                    alt="MR & MISS TEEN 2025 logo"
                     className="h-full w-full object-cover"
                   />
                 </div>
