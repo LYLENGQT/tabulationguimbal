@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&family=Cinzel:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -528,3 +528,21 @@ html, body {
   }
 }
 
+
+/* ===========================
+   LANDING: stage spotlight
+   A trapezoid of light falling onto the crest. Screen-blended so it only ever brightens.
+   =========================== */
+.landing-beam {
+  clip-path: polygon(41% 0, 59% 0, 100% 100%, 0 100%);
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(246, 238, 223, 0.34) 14%,
+    rgba(242, 179, 61, 0.22) 40%,
+    rgba(242, 179, 61, 0.06) 72%,
+    transparent 100%
+  );
+  filter: blur(14px);
+  mix-blend-mode: screen;
+}

@@ -1,78 +1,170 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, Trophy, Medal, Sparkles, Monitor, MonitorOff, Loader2 } from 'lucide-react';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import { ArrowLeft, ChevronDown, Crown, Maximize, Minimize, WifiOff } from 'lucide-react';
 import { fetchOverallRankings, fetchCategoryRankings } from '../services/supabaseApi';
 import type { Division, CategorySlug } from '../types/scoring';
 import { CATEGORY_CONFIG } from '../constants/scoring';
+import { EASE_OUT, focusRing } from '../components/stage/tokens';
 
-const formatRank = (rank: number) => {
-  return rank % 1 !== 0 ? rank.toFixed(1) : rank.toString();
-};
+const REFRESH_MS = 3000;
+const ROTATE_MS = 10_000;
+const DIVISION_LABEL: Record<Division, string> = { male: 'Mr Teen', female: 'Miss Teen' };
 
-const getRankIcon = (rank: number) => {
-  if (rank <= 1) return <Crown className="h-8 w-8 text-amber-400" />;
-  if (rank <= 2) return <Medal className="h-8 w-8 text-slate-300" />;
-  if (rank <= 3) return <Medal className="h-8 w-8 text-orange-400" />;
+type Mode = 'overall' | 'category';
+type View = { division: Division; mode: Mode; category: CategorySlug };
+type Ranked = { id: string; number: number; rank: number; points: number };
+
+// Auto-rotate order: both overall boards, then every round for Mr then Miss.
+const ROTATION: View[] = [
+  { division: 'male', mode: 'overall', category: CATEGORY_CONFIG[0].slug },
+  { division: 'female', mode: 'overall', category: CATEGORY_CONFIG[0].slug },
+  ...CATEGORY_CONFIG.flatMap((c) =>
+    (['male', 'female'] as Division[]).map((division) => ({ division, mode: 'category' as const, category: c.slug }))
+  )
+];
+
+const sameView = (a: View, b: View) =>
+  a.division === b.division && a.mode === b.mode && (a.mode === 'overall' || a.category === b.category);
+
+const formatRank = (rank: number) => (rank % 1 !== 0 ? rank.toFixed(1) : rank.toString());
+const formatPoints = (n: number) => Number(n.toFixed(2)).toString();
+const candidateNo = (n: number) => n.toString().padStart(2, '0');
+
+const placeTitle = (rank: number, division: Division) => {
+  if (rank <= 1) return `${DIVISION_LABEL[division]} 2025`;
+  if (rank <= 2) return '1st runner-up';
+  if (rank <= 3) return '2nd runner-up';
   return null;
 };
 
-const getRankGradient = (rank: number) => {
-  if (rank <= 1) return 'from-amber-500/20 via-amber-400/10 to-transparent border-amber-400/50';
-  if (rank <= 2) return 'from-slate-400/20 via-slate-300/10 to-transparent border-slate-400/50';
-  if (rank <= 3) return 'from-orange-500/20 via-orange-400/10 to-transparent border-orange-400/50';
-  return 'from-slate-800 to-slate-900 border-slate-700';
-};
+// Dev-only rehearsal data (`/live?demo`), stripped from production builds by import.meta.env.DEV.
+function demoRows(view: View): Ranked[] {
+  const numbers = view.division === 'male' ? [7, 3, 11, 1, 9, 5, 12, 2] : [4, 10, 6, 8, 1, 12, 3, 9];
+  return numbers.map((number, i) => ({
+    id: `demo-${view.division}-${number}`,
+    number,
+    rank: i + 1,
+    points: Number((92.4 - i * 2.37 - (view.mode === 'category' ? 1.1 : 0)).toFixed(2))
+  }));
+}
+
+function Segmented<T extends string>({
+  name,
+  options,
+  value,
+  onChange
+}: {
+  name: string;
+  options: Array<{ value: T; label: string }>;
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  const reduce = useReducedMotion() ?? false;
+  return (
+    <div role="group" aria-label={name} className="flex rounded-full bg-stage-velvet p-1 ring-1 ring-inset ring-stage-line">
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(o.value)}
+            className={`relative h-8 rounded-full px-4 text-sm font-semibold transition-colors ${focusRing} ${
+              active ? 'text-stage-night' : 'text-stage-muted hover:text-stage-ivory'
+            }`}
+          >
+            {active && (
+              <motion.span
+                layoutId={`seg-${name}`}
+                transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }}
+                className="absolute inset-0 rounded-full bg-stage-gold"
+              />
+            )}
+            <span className="relative">{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function LiveStatus({ isError, updatedAt }: { isError: boolean; updatedAt: number }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full bg-stage-velvet px-4 py-1.5 text-sm text-stage-muted ring-1 ring-inset ring-stage-line">
+      {isError ? (
+        <>
+          <WifiOff className="h-4 w-4 text-stage-alert" aria-hidden />
+          <span className="text-stage-alert">Reconnecting</span>
+        </>
+      ) : (
+        <>
+          <span className="relative flex h-2 w-2" aria-hidden>
+            <span className="absolute inline-flex h-full w-full rounded-full bg-stage-gold opacity-75 motion-safe:animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-stage-gold" />
+          </span>
+          <span className="font-semibold text-stage-ivory">Live</span>
+          {updatedAt > 0 && (
+            <span>
+              updated {new Date(updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function BoardSkeleton() {
+  return (
+    <div aria-hidden className="motion-safe:animate-pulse">
+      <div className="grid gap-4 md:grid-cols-3 md:items-end">
+        <div className="h-56 rounded-3xl bg-stage-velvet md:order-1 md:h-[300px]" />
+        <div className="h-64 rounded-3xl bg-stage-velvet md:order-2 md:h-[370px]" />
+        <div className="h-52 rounded-3xl bg-stage-velvet md:order-3 md:h-[260px]" />
+      </div>
+      <div className="mt-6 flex flex-col gap-2">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-16 rounded-2xl bg-stage-velvet" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BoardMessage({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  return (
+    <div className="flex flex-col items-center py-20 text-center">
+      {icon}
+      <p className="mt-6 font-crown text-2xl font-semibold text-stage-ivory md:text-3xl">{title}</p>
+      <p className="mt-3 max-w-[48ch] text-base leading-relaxed text-stage-muted md:text-lg">{body}</p>
+    </div>
+  );
+}
 
 export function LiveDisplayPage() {
-  const [division, setDivision] = useState<Division>('male');
-  const [viewMode, setViewMode] = useState<'overall' | 'category'>('overall');
-  const [selectedCategory, setSelectedCategory] = useState<CategorySlug>('production');
+  const reduce = useReducedMotion() ?? false;
+  const [view, setView] = useState<View>(ROTATION[0]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [autoRotate, setAutoRotate] = useState(false);
-  const [rotationIndex, setRotationIndex] = useState(0);
+  const demo = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demo');
 
-  // Auto-rotate through views
+  // Advance from whatever view is showing, so manual picks and rotation mix cleanly.
   useEffect(() => {
     if (!autoRotate) return;
-    
-    const interval = setInterval(() => {
-      setRotationIndex((prev) => {
-        const next = prev + 1;
-        const totalViews = 2 + CATEGORY_CONFIG.length * 2; // Overall + categories for both divisions
-        
-        if (next >= totalViews) return 0;
-        
-        // Determine what view to show based on index
-        if (next === 0) {
-          setDivision('male');
-          setViewMode('overall');
-        } else if (next === 1) {
-          setDivision('female');
-          setViewMode('overall');
-        } else {
-          const categoryIndex = Math.floor((next - 2) / 2);
-          const isFemale = (next - 2) % 2 === 1;
-          setDivision(isFemale ? 'female' : 'male');
-          setViewMode('category');
-          setSelectedCategory(CATEGORY_CONFIG[categoryIndex]?.slug || 'production');
-        }
-        
-        return next;
-      });
-    }, 10000); // Change every 10 seconds
-
-    return () => clearInterval(interval);
+    const id = setInterval(() => {
+      setView((cur) => ROTATION[(ROTATION.findIndex((v) => sameView(v, cur)) + 1) % ROTATION.length]);
+    }, ROTATE_MS);
+    return () => clearInterval(id);
   }, [autoRotate]);
 
-  // Fullscreen toggle
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
+      document.documentElement.requestFullscreen().catch(() => undefined);
     } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
+      document.exitFullscreen().catch(() => undefined);
     }
   };
 
@@ -82,266 +174,273 @@ export function LiveDisplayPage() {
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
-  // Queries
   const overallQuery = useQuery({
-    queryKey: ['live-overall', division],
-    queryFn: () => fetchOverallRankings(division),
-    refetchInterval: 3000,
-    enabled: viewMode === 'overall'
+    queryKey: ['live-overall', view.division],
+    queryFn: () => fetchOverallRankings(view.division),
+    refetchInterval: REFRESH_MS,
+    enabled: !demo && view.mode === 'overall'
   });
 
   const categoryQuery = useQuery({
-    queryKey: ['live-category', division, selectedCategory],
-    queryFn: () => fetchCategoryRankings(division, selectedCategory),
-    refetchInterval: 3000,
-    enabled: viewMode === 'category'
+    queryKey: ['live-category', view.division, view.category],
+    queryFn: () => fetchCategoryRankings(view.division, view.category),
+    refetchInterval: REFRESH_MS,
+    enabled: !demo && view.mode === 'category'
   });
 
-  const rows = viewMode === 'overall' ? overallQuery.data : categoryQuery.data;
-  const isLoading = viewMode === 'overall' ? overallQuery.isLoading : categoryQuery.isLoading;
-  const categoryLabel = CATEGORY_CONFIG.find(c => c.slug === selectedCategory)?.label || '';
+  const active = view.mode === 'overall' ? overallQuery : categoryQuery;
+
+  const rows: Ranked[] | undefined = useMemo(() => {
+    if (demo) return demoRows(view);
+    if (view.mode === 'overall') {
+      return overallQuery.data?.map((r) => ({
+        id: r.contestant_id,
+        number: r.number,
+        rank: r.final_placement,
+        points: r.total_points
+      }));
+    }
+    return categoryQuery.data?.map((r) => ({
+      id: r.contestant_id,
+      number: r.number,
+      rank: r.rank,
+      points: r.category_score
+    }));
+  }, [demo, view, overallQuery.data, categoryQuery.data]);
+
+  const isLoading = !demo && active.isLoading;
+  const isError = !demo && active.isError;
+  const updatedAt = demo ? Date.now() : active.dataUpdatedAt;
+  const categoryLabel = CATEGORY_CONFIG.find((c) => c.slug === view.category)?.label ?? '';
+  const viewKey = `${view.division}-${view.mode}-${view.mode === 'category' ? view.category : 'all'}`;
+
+  const top = rows?.slice(0, 3) ?? [];
+  const rest = rows?.slice(3, 10) ?? [];
+  const layoutTransition = reduce ? { duration: 0 } : { type: 'spring' as const, stiffness: 260, damping: 32 };
+
+  // Podium sits 2nd, 1st, 3rd on wide screens; plain rank order when stacked.
+  const podiumStyle = [
+    'md:order-2 md:min-h-[370px] bg-[linear-gradient(180deg,rgba(242,179,61,0.2),rgba(26,18,13,0.92)_62%)] ring-stage-gold/55',
+    'md:order-1 md:min-h-[300px] bg-stage-velvet ring-stage-line',
+    'md:order-3 md:min-h-[260px] bg-stage-velvet ring-stage-line'
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden">
-      {/* Control Bar - Hidden in fullscreen */}
+    // isolate + own bg so the winner's spotlight can screen-blend
+    <div className="relative isolate min-h-[100dvh] overflow-hidden bg-stage-night font-stage text-stage-ivory antialiased">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(50%_40%_at_50%_45%,rgba(239,122,43,0.12),transparent_70%)]"
+      />
+
       {!isFullscreen && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-lg border-b border-slate-800 px-4 py-3">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-400" />
-              <span className="font-display font-bold text-lg">Live Display</span>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Division Toggle */}
-              <div className="flex rounded-lg border border-slate-700 overflow-hidden">
-                <button
-                  onClick={() => setDivision('male')}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                    division === 'male'
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Male
-                </button>
-                <button
-                  onClick={() => setDivision('female')}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                    division === 'female'
-                      ? 'bg-rose-600 text-white'
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Female
-                </button>
-              </div>
+        <div className="relative z-30 border-b border-stage-line/80 bg-stage-night/85 backdrop-blur-md md:sticky md:top-0">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
+            <Link
+              to="/"
+              className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium text-stage-muted transition-colors hover:text-stage-ivory ${focusRing}`}
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Home
+            </Link>
 
-              {/* View Mode Toggle */}
-              <div className="flex rounded-lg border border-slate-700 overflow-hidden">
-                <button
-                  onClick={() => setViewMode('overall')}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                    viewMode === 'overall'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Overall
-                </button>
-                <button
-                  onClick={() => setViewMode('category')}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                    viewMode === 'category'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Category
-                </button>
-              </div>
+            <Segmented
+              name="division"
+              value={view.division}
+              onChange={(division) => setView((v) => ({ ...v, division }))}
+              options={[
+                { value: 'male', label: 'Mr Teen' },
+                { value: 'female', label: 'Miss Teen' }
+              ]}
+            />
+            <Segmented
+              name="board"
+              value={view.mode}
+              onChange={(mode) => setView((v) => ({ ...v, mode }))}
+              options={[
+                { value: 'overall', label: 'Overall' },
+                { value: 'category', label: 'By round' }
+              ]}
+            />
 
-              {/* Category Selector */}
-              {viewMode === 'category' && (
+            {view.mode === 'category' && (
+              <label className="relative">
+                <span className="sr-only">Round</span>
                 <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value as CategorySlug)}
-                  className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white"
+                  value={view.category}
+                  onChange={(e) => setView((v) => ({ ...v, category: e.target.value as CategorySlug }))}
+                  className={`h-10 appearance-none rounded-full bg-stage-velvet pl-4 pr-10 text-sm font-semibold text-stage-ivory ring-1 ring-inset ring-stage-line ${focusRing}`}
                 >
-                  {CATEGORY_CONFIG.map((cat) => (
-                    <option key={cat.slug} value={cat.slug}>
-                      {cat.label}
+                  {CATEGORY_CONFIG.map((c) => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.label}
                     </option>
                   ))}
                 </select>
-              )}
+                <ChevronDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-stage-muted" aria-hidden />
+              </label>
+            )}
 
-              {/* Auto-Rotate Toggle */}
+            <div className="ml-auto flex items-center gap-2">
               <button
-                onClick={() => setAutoRotate(!autoRotate)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-                  autoRotate
-                    ? 'border-emerald-500 bg-emerald-600 text-white'
-                    : 'border-slate-700 bg-slate-800 text-slate-400 hover:text-white'
+                type="button"
+                role="switch"
+                aria-checked={autoRotate}
+                onClick={() => setAutoRotate((v) => !v)}
+                className={`inline-flex h-10 items-center gap-3 rounded-full pl-2 pr-4 text-sm font-semibold transition-colors ${focusRing} ${
+                  autoRotate ? 'text-stage-ivory' : 'text-stage-muted hover:text-stage-ivory'
                 }`}
               >
-                {autoRotate ? 'Auto: ON' : 'Auto: OFF'}
+                <span
+                  aria-hidden
+                  className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors ${
+                    autoRotate ? 'bg-stage-gold' : 'bg-stage-line'
+                  }`}
+                >
+                  <span
+                    className={`h-5 w-5 rounded-full bg-stage-ivory shadow transition-transform duration-200 ${
+                      autoRotate ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </span>
+                Auto-rotate
               </button>
-
-              {/* Fullscreen Toggle */}
               <button
+                type="button"
                 onClick={toggleFullscreen}
-                className="p-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                aria-label="Enter full screen"
+                className={`grid h-10 w-10 place-items-center rounded-full text-stage-muted ring-1 ring-inset ring-stage-line transition-colors hover:text-stage-ivory ${focusRing}`}
               >
-                {isFullscreen ? <MonitorOff className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
+                <Maximize className="h-4 w-4" aria-hidden />
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Display */}
-      <div className={`flex flex-col items-center justify-center min-h-screen px-8 ${!isFullscreen ? 'pt-20' : ''}`}>
-        {/* Header */}
-        <motion.div
-          key={`header-${division}-${viewMode}-${selectedCategory}`}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
-          <div className="inline-flex items-center gap-3 mb-4">
-            <Trophy className={`h-10 w-10 ${division === 'male' ? 'text-sky-400' : 'text-rose-400'}`} />
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold tracking-tight">
-              {division === 'male' ? 'MR TEEN' : 'MISS TEEN'} 2025
+      <main className="mx-auto flex max-w-6xl flex-col px-4 py-10 sm:px-8 md:py-14">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.header
+            key={`head-${viewKey}`}
+            initial={reduce ? false : { opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, transition: { duration: reduce ? 0 : 0.15 } }}
+            transition={{ duration: 0.45, ease: EASE_OUT }}
+            className="flex flex-col items-center text-center"
+          >
+            <LiveStatus isError={isError} updatedAt={updatedAt} />
+            <h1 className="mt-6 font-crown text-5xl font-semibold leading-[1.05] md:text-7xl lg:text-8xl">
+              {DIVISION_LABEL[view.division]} 2025
             </h1>
-            <Trophy className={`h-10 w-10 ${division === 'male' ? 'text-sky-400' : 'text-rose-400'}`} />
-          </div>
-          <h2 className="text-xl md:text-2xl lg:text-3xl font-medium text-slate-300">
-            {viewMode === 'overall' ? 'OVERALL RANKINGS' : categoryLabel.toUpperCase()}
-          </h2>
-          <p className="text-sm text-slate-500 mt-2">
-            Disyembre sa Guimbal 2025 • Live Updates
-          </p>
-        </motion.div>
+            <p className="mt-3 text-lg font-semibold text-stage-gold md:text-2xl">
+              {view.mode === 'overall' ? 'Overall rankings' : categoryLabel}
+            </p>
+          </motion.header>
+        </AnimatePresence>
 
-        {/* Rankings Grid */}
-        <div className="w-full max-w-5xl">
-          <AnimatePresence mode="popLayout">
-            {isLoading ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-20"
-              >
-                <div className="relative">
-                  <Loader2 className="h-16 w-16 animate-spin text-amber-400" />
-                  <Sparkles className="absolute -top-2 -right-2 h-6 w-6 text-amber-300 animate-pulse" />
-                </div>
-                <p className="text-xl text-slate-400 mt-6 animate-pulse">Loading rankings...</p>
-              </motion.div>
-            ) : rows && rows.length > 0 ? (
-              <motion.div
-                key={`grid-${division}-${viewMode}-${selectedCategory}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="grid gap-4"
-              >
-                {rows.slice(0, 10).map((row, index) => {
-                  const rank = viewMode === 'overall' 
-                    ? (row as any).final_placement 
-                    : (row as any).rank;
-                  const points = viewMode === 'overall'
-                    ? (row as any).total_points
-                    : (row as any).category_score;
-                  
-                  return (
-                    <motion.div
-                      key={row.contestant_id}
-                      initial={{ opacity: 0, x: -50 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-r p-4 md:p-6 ${getRankGradient(rank)}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 md:gap-6">
-                          {/* Rank Badge */}
-                          <div className={`flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-2xl font-display font-bold text-3xl md:text-4xl ${
-                            rank <= 1 ? 'bg-amber-500/30 text-amber-300' :
-                            rank <= 2 ? 'bg-slate-400/30 text-slate-200' :
-                            rank <= 3 ? 'bg-orange-500/30 text-orange-300' :
-                            'bg-slate-700/50 text-slate-400'
-                          }`}>
-                            {formatRank(rank)}
-                          </div>
-                          
-                          {/* Contestant Info */}
-                          <div>
-                            <div className="flex items-center gap-3">
-                              {getRankIcon(rank)}
-                              <span className="text-2xl md:text-3xl font-display font-bold">
-                                Candidate #{(row as any).number?.toString().padStart(2, '0')}
-                              </span>
-                            </div>
-                            {rank <= 3 && (
-                              <p className="text-slate-400 mt-1">
-                                {rank <= 1 ? (division === 'male' ? 'MR TEEN 2025' : 'MISS TEEN 2025') :
-                                 rank <= 2 ? '1st Runner Up' : '2nd Runner Up'}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Points */}
-                        <div className="text-right">
-                          <p className="text-3xl md:text-4xl font-bold font-mono">
-                            {formatRank(points)}
+        <section aria-label="Rankings" className="mt-12 md:mt-20">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`board-${viewKey}-${isLoading ? 'loading' : 'ready'}`}
+              initial={reduce ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: reduce ? 0 : 0.15 } }}
+              transition={{ duration: 0.35 }}
+            >
+              {isLoading ? (
+                <BoardSkeleton />
+              ) : isError && !rows?.length ? (
+                <BoardMessage
+                  icon={<WifiOff className="h-12 w-12 text-stage-alert" aria-hidden />}
+                  title="Can't reach the results server"
+                  body="Retrying every 3 seconds. If this keeps up, check the venue's internet connection."
+                />
+              ) : !rows?.length ? (
+                <BoardMessage
+                  icon={<Crown className="h-12 w-12 text-stage-line" aria-hidden />}
+                  title="No scores yet"
+                  body="Rankings appear here as judges submit their scores."
+                />
+              ) : (
+                <LayoutGroup>
+                  <ol className="relative grid gap-4 md:grid-cols-3 md:items-end">
+                    {top.map((row, place) => {
+                      const title = view.mode === 'overall' ? placeTitle(row.rank, view.division) : null;
+                      return (
+                        <motion.li
+                          key={row.id}
+                          layoutId={`c-${row.id}`}
+                          transition={{ layout: layoutTransition }}
+                          className={`relative flex flex-col items-center justify-end rounded-3xl px-6 pb-8 pt-10 text-center ring-1 ring-inset ${podiumStyle[place]}`}
+                        >
+                          {place === 0 && (
+                            <div
+                              aria-hidden
+                              className="landing-beam pointer-events-none absolute -top-24 left-[10%] hidden h-40 w-[80%] md:block"
+                            />
+                          )}
+                          {place === 0 && <Crown className="mb-3 h-10 w-10 text-stage-gold" aria-hidden />}
+                          <p className="text-sm font-semibold text-stage-muted">Rank {formatRank(row.rank)}</p>
+                          <p className="mt-4 text-sm text-stage-muted">Candidate</p>
+                          <p
+                            className={`font-crown font-semibold leading-none tabular-nums text-stage-ivory ${
+                              place === 0 ? 'text-8xl md:text-9xl' : 'text-7xl md:text-8xl'
+                            }`}
+                          >
+                            {candidateNo(row.number)}
                           </p>
-                          <p className="text-sm text-slate-400">points</p>
-                        </div>
-                      </div>
-                      
-                      {/* Decorative elements for top 3 */}
-                      {rank <= 3 && (
-                        <div className="absolute -right-4 -top-4 opacity-10">
-                          <Sparkles className="h-32 w-32" />
-                        </div>
-                      )}
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-20"
-              >
-                <Trophy className="h-16 w-16 mx-auto text-slate-600 mb-4" />
-                <p className="text-xl text-slate-500">No rankings available yet</p>
-                <p className="text-sm text-slate-600 mt-2">Scores will appear here as judges submit</p>
-              </motion.div>
-            )}
+                          <p className="mt-5 text-2xl font-semibold tabular-nums text-stage-gold">
+                            {formatPoints(row.points)}
+                            <span className="ml-1.5 text-base font-medium text-stage-muted">points</span>
+                          </p>
+                          {title && <p className="mt-2 text-base font-semibold text-stage-ivory">{title}</p>}
+                        </motion.li>
+                      );
+                    })}
+                  </ol>
+
+                  {rest.length > 0 && (
+                    <ol start={4} className="mt-6 flex flex-col gap-2">
+                      {rest.map((row) => (
+                        <motion.li
+                          key={row.id}
+                          layoutId={`c-${row.id}`}
+                          transition={{ layout: layoutTransition }}
+                          className="grid grid-cols-[3.5rem_1fr_auto] items-center gap-4 rounded-2xl bg-stage-velvet/70 px-5 py-4 ring-1 ring-inset ring-stage-line md:grid-cols-[5rem_1fr_auto] md:px-8"
+                        >
+                          <span className="font-crown text-2xl font-semibold tabular-nums text-stage-muted md:text-3xl">
+                            {formatRank(row.rank)}
+                          </span>
+                          <span className="text-xl font-semibold md:text-2xl">Candidate {candidateNo(row.number)}</span>
+                          <span className="text-xl font-semibold tabular-nums md:text-2xl">
+                            {formatPoints(row.points)}
+                            <span className="ml-1.5 text-sm font-medium text-stage-muted">points</span>
+                          </span>
+                        </motion.li>
+                      ))}
+                    </ol>
+                  )}
+                </LayoutGroup>
+              )}
+            </motion.div>
           </AnimatePresence>
-        </div>
+        </section>
 
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-slate-600">
-            Rankings update automatically every 3 seconds
-          </p>
-        </div>
-      </div>
+        <p className="mt-12 text-center text-sm text-stage-muted/80">
+          Rankings refresh every 3 seconds{autoRotate ? ' and the board changes every 10 seconds' : ''}.
+        </p>
+      </main>
 
-      {/* Fullscreen Exit Hint */}
       {isFullscreen && (
-        <div className="fixed bottom-4 right-4 text-xs text-slate-600">
-          Press ESC to exit fullscreen
-        </div>
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className={`fixed bottom-4 right-4 inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs text-stage-muted/60 transition-colors hover:text-stage-ivory ${focusRing}`}
+        >
+          <Minimize className="h-3.5 w-3.5" aria-hidden />
+          Esc to exit full screen
+        </button>
       )}
     </div>
   );
 }
-
