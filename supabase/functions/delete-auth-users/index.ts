@@ -40,6 +40,20 @@ Deno.serve(async (req) => {
       }
     })
 
+    // Caller must be signed in as the admin. Without this check anyone holding
+    // the public anon key (itself a valid JWT) could delete every judge account.
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
+    const { data: caller } = await supabaseAdmin.auth.getUser(token)
+    if (caller?.user?.email?.toLowerCase() !== 'admin@mrmsteen2025.com') {
+      return new Response(
+        JSON.stringify({ error: 'Only the admin can delete accounts' }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
     // Parse request body (optional)
     let requestBody: { emails?: string[] } = {}
     try {
