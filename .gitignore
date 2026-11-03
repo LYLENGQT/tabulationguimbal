@@ -46,3 +46,10 @@ coverage
 .temp
 .tmp
 
+
+# Env files of any name (keys must never be committed; env.example is the template)
+.env.*
+.env.seeder
+
+# Local tool binaries
+*.exe
