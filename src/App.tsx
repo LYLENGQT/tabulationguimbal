@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
+import { LandingPage } from './pages/LandingPage';
 import { JudgeLoginPage } from './pages/JudgeLoginPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { JudgeScoringPage } from './pages/JudgeScoringPage';
@@ -12,7 +13,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<JudgeLoginPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route
