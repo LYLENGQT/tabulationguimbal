@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import type {
   ActivityLog,
@@ -26,27 +27,27 @@ export const supabaseAuth = {
     if (error) throw error;
     return true;
   },
-  async signUpWithPassword(params: {
-    email: string;
-    password: string;
+  /**
+   * Creates a judge's login and judges row server-side (create-judge Edge Function).
+   * Replaces a browser-side auth.signUp(), which needed public sign-ups enabled and
+   * swapped the admin's session for the new judge's.
+   */
+  async createJudgeAccount(params: {
     full_name: string;
-    username?: string;
+    username: string;
+    password: string;
     division: Division;
-  }) {
-    const { email, password, full_name, division, username } = params;
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name,
-          division,
-          username
-        }
+  }): Promise<Judge> {
+    const { data, error } = await supabase.functions.invoke('create-judge', { body: params });
+    if (error) {
+      // Surface the function's own message instead of "non-2xx status code"
+      if (error instanceof FunctionsHttpError) {
+        const body = await error.context.json().catch(() => null);
+        throw new Error(body?.error ?? error.message);
       }
-    });
-    if (error) throw error;
-    return data;
+      throw error;
+    }
+    return (data as { judge: Judge }).judge;
   },
   async signInWithUsername(username: string, password: string) {
     // Look up judge by username to get their email (case-insensitive)
