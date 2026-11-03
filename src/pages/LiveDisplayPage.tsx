@@ -213,6 +213,9 @@ export function LiveDisplayPage() {
   const updatedAt = demo ? Date.now() : active.dataUpdatedAt;
   const categoryLabel = CATEGORY_CONFIG.find((c) => c.slug === view.category)?.label ?? '';
   const viewKey = `${view.division}-${view.mode}-${view.mode === 'category' ? view.category : 'all'}`;
+  // Overall placement sums each contestant's rank in every round (lowest total wins);
+  // a round board shows the weighted score (highest wins). Label them differently.
+  const unit = view.mode === 'overall' ? 'rank points' : 'points';
 
   const top = rows?.slice(0, 3) ?? [];
   const rest = rows?.slice(3, 10) ?? [];
@@ -335,6 +338,11 @@ export function LiveDisplayPage() {
             <p className="mt-3 text-lg font-semibold text-stage-gold md:text-2xl">
               {view.mode === 'overall' ? 'Overall rankings' : categoryLabel}
             </p>
+            {view.mode === 'overall' && (
+              <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-stage-muted md:text-base">
+                Each contestant&rsquo;s placing in every round, added up. The lowest total wins.
+              </p>
+            )}
           </motion.header>
         </AnimatePresence>
 
@@ -391,7 +399,7 @@ export function LiveDisplayPage() {
                           </p>
                           <p className="mt-5 text-2xl font-semibold tabular-nums text-stage-gold">
                             {formatPoints(row.points)}
-                            <span className="ml-1.5 text-base font-medium text-stage-muted">points</span>
+                            <span className="ml-1.5 text-base font-medium text-stage-muted">{unit}</span>
                           </p>
                           {title && <p className="mt-2 text-base font-semibold text-stage-ivory">{title}</p>}
                         </motion.li>
@@ -414,7 +422,7 @@ export function LiveDisplayPage() {
                           <span className="text-xl font-semibold md:text-2xl">Candidate {candidateNo(row.number)}</span>
                           <span className="text-xl font-semibold tabular-nums md:text-2xl">
                             {formatPoints(row.points)}
-                            <span className="ml-1.5 text-sm font-medium text-stage-muted">points</span>
+                            <span className="ml-1.5 text-sm font-medium text-stage-muted">{unit}</span>
                           </span>
                         </motion.li>
                       ))}
